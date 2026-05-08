@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>森林記帳小筆記 - 森林裡的每一分收穫與落葉</title>
-    <!-- 引入必要的 CDN -->
+    <!-- 引入 CDN -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -13,47 +13,75 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
         
+        :root {
+            --forest-green: #4A6741;
+            --sky-blue: #87CEEB;
+            --oak-brown: #D4A373;
+            --parchment: #FDFBF7;
+        }
+
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #F9F6F0;
+            background-image: radial-gradient(#E8DCC4 1.5px, transparent 1.5px);
+            background-size: 40px 40px;
             color: #5D4037;
             margin: 0;
             padding: 0;
+            overflow-x: hidden;
         }
 
-        /* 吉卜力風格的自定義樣式 */
+        /* 繪本風格羊皮紙卡片 */
         .ghibli-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(8px);
-            border: 1px solid #E8DCC4;
+            background: var(--parchment);
+            border: 2px solid #E8DCC4;
+            border-bottom-width: 6px;
+            border-right-width: 4px;
             border-radius: 2.5rem;
-            box-shadow: 0 10px 30px -5px rgba(74, 103, 65, 0.1);
+            box-shadow: 10px 10px 0px rgba(74, 103, 65, 0.05);
+            position: relative;
         }
 
+        /* 森林漸層 */
         .forest-gradient {
             background: linear-gradient(135deg, #4A6741 0%, #5D7A52 50%, #3E5638 100%);
+            border: 4px solid rgba(245, 245, 220, 0.15);
         }
 
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+        /* 飄浮落葉動畫 */
+        .leaf-float {
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.35;
+            animation: float-down 15s linear infinite;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #E8DCC4;
-            border-radius: 20px;
+
+        @keyframes float-down {
+            0% { transform: translateY(-10vh) rotate(0deg) translateX(0); }
+            50% { transform: translateY(50vh) rotate(180deg) translateX(30px); }
+            100% { transform: translateY(110vh) rotate(360deg) translateX(0); }
         }
-        
-        .animate-pop {
-            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+
+        /* 縮放彈跳效果 */
+        .btn-press:active { transform: scale(0.92); }
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes pop {
             0% { transform: scale(0.9); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
 
-        input[type="date"]::-webkit-inner-spin-button,
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: sepia(1) saturate(2) hue-rotate(45deg);
+        .tab-active {
+            background: var(--forest-green);
+            color: white;
+            box-shadow: 0 10px 20px -5px rgba(74, 103, 65, 0.3);
+            transform: scale(1.05);
         }
+
+        /* 滾動條樣式 */
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E8DCC4; border-radius: 10px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -62,257 +90,489 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
 
+        // 圖標渲染組件
         const Icon = ({ name, size = 20, className = "" }) => {
             const ref = useRef(null);
-            
             useEffect(() => {
-                // 確保 window.lucide 已載入且包含 icons 屬性
-                const lucideLib = window.lucide;
-                if (ref.current && lucideLib && lucideLib.icons) {
-                    try {
-                        const iconData = lucideLib.icons[name];
-                        if (iconData) {
-                            // 清空舊內容並重新建立圖標
-                            ref.current.innerHTML = '';
-                            const svgElement = lucideLib.createIcons({
-                                icons: { [name]: iconData },
-                                attrs: { 
-                                    strokeWidth: 2.5, 
-                                    width: size, 
-                                    height: size,
-                                    class: className 
-                                }
-                            });
-                        }
-                    } catch (err) {
-                        console.error(`無法載入圖標: ${name}`, err);
-                    }
+                if (ref.current && window.lucide) {
+                    ref.current.innerHTML = '';
+                    const iconName = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+                    const i = document.createElement('i');
+                    i.setAttribute('data-lucide', iconName);
+                    ref.current.appendChild(i);
+                    window.lucide.createIcons({
+                        attrs: { 'stroke-width': 2.5, 'width': size, 'height': size, 'class': className }
+                    });
                 }
             }, [name, size, className]);
-
-            // 提供一個具有固定寬高的容器，防止版面跳動
-            return <span 
-                ref={ref} 
-                className={`inline-flex items-center justify-center ${className}`} 
-                style={{ width: size, height: size, minWidth: size }}
-            />;
+            return <span ref={ref} className={`inline-flex items-center justify-center shrink-0 ${className}`} style={{ width: size, height: size }} />;
         };
 
         const INITIAL_CATEGORIES = {
-            'food_morning': { label: '晨之餐', icon: 'Coffee', color: 'bg-[#D4A373]' },
-            'food_daily': { label: '日常食', icon: 'Utensils', color: 'bg-[#4A6741]' },
-            'transport': { label: '旅途上', icon: 'Bus', color: 'bg-[#87CEEB]' },
-            'shopping': { label: '生活物', icon: 'ShoppingBag', color: 'bg-[#BC6C25]' },
-            'entertainment': { label: '閒暇時', icon: 'Gamepad2', color: 'bg-[#CCD5AE]' },
-            'home': { label: '避風港', icon: 'Home', color: 'bg-[#FAEDCD] text-gray-700' },
-            'income': { label: '勤勉獲', icon: 'Sprout', color: 'bg-[#4A6741]', isIncome: true }
+            'food': { label: '晨間食事', icon: 'Coffee', color: 'bg-[#D4A373]' },
+            'meal': { label: '豐盛餐飲', icon: 'Utensils', color: 'bg-[#4A6741]' },
+            'transport': { label: '林間穿梭', icon: 'Bus', color: 'bg-[#87CEEB]' },
+            'shopping': { label: '生活收穫', icon: 'ShoppingBag', color: 'bg-[#BC6C25]' },
+            'play': { label: '閒暇時光', icon: 'Gamepad2', color: 'bg-[#CCD5AE]' },
+            'home': { label: '避風港灣', icon: 'Home', color: 'bg-[#FAEDCD] text-gray-700' },
+            'medical': { label: '草藥護理', icon: 'Heart', color: 'bg-[#E5989B]' },
+            'income': { label: '辛勤獲取', icon: 'Sprout', color: 'bg-[#4A6741]', isIncome: true }
         };
 
-        const COLOR_OPTIONS = [
-            'bg-[#4A6741]', 'bg-[#87CEEB]', 'bg-[#D4A373]', 'bg-[#E9EDC9]', 
-            'bg-[#FEFAE0]', 'bg-[#FAEDCD]', 'bg-[#CCD5AE]', 'bg-[#BC6C25]'
-        ];
-
-        const ICON_OPTIONS = [
-            'Utensils', 'Car', 'ShoppingBag', 'Home', 'Coffee', 'Sprout', 'Heart', 
-            'Gamepad2', 'Gift', 'Briefcase', 'Smartphone', 'Pizza', 'Trees', 'Bus', 
-            'Cloud', 'Navigation', 'Wind', 'Flower'
-        ];
+        // 背景裝飾落葉
+        const FloatingLeaves = () => {
+            const leaves = useMemo(() => Array.from({ length: 10 }), []);
+            return (
+                <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                    {leaves.map((_, i) => (
+                        <div key={i} className="leaf-float" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 15}s`, animationDuration: `${10 + Math.random() * 10}s` }}>
+                            <Icon name="Leaf" size={24 + Math.random() * 12} className="text-[#4A6741]" />
+                        </div>
+                    ))}
+                </div>
+            );
+        };
 
         function App() {
+            // --- 狀態定義 ---
             const [activeTab, setActiveTab] = useState('wallet');
+            const [forestName, setForestName] = useState(() => localStorage.getItem('forest_name') || '我的秘密森林');
+            const [budget, setBudget] = useState(() => Number(localStorage.getItem('forest_budget')) || 15000);
             const [transactions, setTransactions] = useState(() => {
                 const saved = localStorage.getItem('ghibli_accounting_data');
                 return saved ? JSON.parse(saved) : [];
             });
-            const [categories, setCategories] = useState(() => {
-                const saved = localStorage.getItem('ghibli_categories');
-                return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-            });
-
+            
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isSettingOpen, setIsSettingOpen] = useState(false);
-            const [filterType, setFilterType] = useState('all');
+            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [formData, setFormData] = useState({
-                type: 'expense', amount: '', category: 'food_morning', note: '',
-                date: new Date().toISOString().split('T')[0]
+                type: 'expense', amount: '', category: 'food', note: '', date: new Date().toISOString().split('T')[0]
             });
 
+            // --- 持久化 ---
             useEffect(() => {
                 localStorage.setItem('ghibli_accounting_data', JSON.stringify(transactions));
-                localStorage.setItem('ghibli_categories', JSON.stringify(categories));
-            }, [transactions, categories]);
+                localStorage.setItem('forest_name', forestName);
+                localStorage.setItem('forest_budget', budget);
+            }, [transactions, forestName, budget]);
 
+            // --- 數值計算 ---
             const stats = useMemo(() => {
-                const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
-                const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
-                return { income, expense, balance: income - expense };
-            }, [transactions]);
+                const now = new Date();
+                const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const monthlyData = transactions.filter(t => t.date.startsWith(thisMonth));
+                const income = monthlyData.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+                const expense = monthlyData.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+                
+                const catStats = {};
+                monthlyData.filter(t => t.type === 'expense').forEach(t => {
+                    catStats[t.category] = (catStats[t.category] || 0) + Number(t.amount);
+                });
 
+                return {
+                    income, expense, balance: income - expense,
+                    budgetUsed: Math.min(100, (expense / (budget || 1) * 100)).toFixed(1),
+                    catStats: Object.entries(catStats).sort((a,b) => b[1] - a[1])
+                };
+            }, [transactions, budget]);
+
+            // --- 動作處理 ---
             const handleSubmit = (e) => {
                 e.preventDefault();
                 if (!formData.amount || formData.amount <= 0) return;
-                const newTransaction = { ...formData, id: Date.now(), amount: Number(formData.amount) };
-                setTransactions([newTransaction, ...transactions]);
+                const newT = { ...formData, id: Date.now(), amount: Number(formData.amount) };
+                setTransactions([newT, ...transactions]);
                 setIsModalOpen(false);
                 setFormData({ ...formData, amount: '', note: '' });
             };
 
             const deleteTransaction = (id) => setTransactions(transactions.filter(t => t.id !== id));
 
-            return (
-                <div className="min-h-screen pb-32">
-                    {/* 頂部裝飾 */}
-                    <div className="h-2 bg-gradient-to-r from-[#4A6741] via-[#87CEEB] to-[#D4A373]"></div>
+            const exportCSV = () => {
+                let csv = "日期,類型,類別,金額,備註\n";
+                transactions.forEach(t => {
+                    csv += `${t.date},${t.type === 'income' ? '收穫' : '落葉'},${INITIAL_CATEGORIES[t.category]?.label || '其他'},${t.amount},${t.note}\n`;
+                });
+                const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `森林帳本_${new Date().toLocaleDateString()}.csv`);
+                link.click();
+            };
 
-                    <header className="bg-white/80 backdrop-blur-md border-b border-[#E8DCC4] sticky top-0 z-20 px-6 py-5">
-                        <div className="max-w-2xl mx-auto flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-[#E9EDC9] p-2 rounded-2xl border border-[#CCD5AE]">
-                                    <Icon name="Sprout" className="text-[#4A6741]" size={24} />
-                                </div>
-                                <h1 className="text-xl font-bold tracking-tight text-[#4A6741]">森林記帳小筆記</h1>
+            return (
+                <div className="relative min-h-screen pb-32">
+                    <FloatingLeaves />
+                    
+                    {/* 頂部裝飾 */}
+                    <div className="h-3 bg-gradient-to-r from-[#4A6741] via-[#87CEEB] to-[#D4A373] shadow-md sticky top-0 z-50"></div>
+
+                    {/* 頁首 */}
+                    <header className="max-w-2xl mx-auto px-6 py-8 flex justify-between items-center relative z-10">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-[#4A6741] p-3.5 rounded-[2rem] text-white shadow-xl rotate-[-3deg] animate-float">
+                                <Icon name="Trees" size={32} />
                             </div>
-                            <div className="flex gap-3">
-                                <button onClick={() => setIsSettingOpen(true)} className="bg-white border-2 border-[#E8DCC4] text-[#8B7355] p-2.5 rounded-2xl hover:bg-[#FDFBF7] transition-all">
-                                    <Icon name="Settings" size={20} />
-                                </button>
-                                <button onClick={() => setIsModalOpen(true)} className="bg-[#4A6741] text-white p-2.5 rounded-2xl shadow-lg hover:bg-[#3E5638] transition-all active:scale-95 shadow-[#4A6741]/20">
-                                    <Icon name="Plus" size={24} />
-                                </button>
+                            <div>
+                                <h1 className="text-2xl font-black text-[#4A6741] flex items-center gap-1.5">
+                                    {forestName}
+                                    <Icon name="Sparkles" size={16} className="text-[#D4A373]" />
+                                </h1>
+                                <p className="text-[10px] font-bold text-[#A69076] tracking-[0.2em] uppercase opacity-70">The Secret Forest Notebook</p>
                             </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => setIsSettingOpen(true)} className="p-3 bg-white border-2 border-[#E8DCC4] rounded-2xl text-[#8B7355] btn-press shadow-sm">
+                                <Icon name="Settings" size={22} />
+                            </button>
+                            <button onClick={() => setIsModalOpen(true)} className="p-3 bg-[#4A6741] text-white rounded-2xl btn-press shadow-lg shadow-emerald-200">
+                                <Icon name="Plus" size={26} />
+                            </button>
                         </div>
                     </header>
 
-                    <main className="max-w-2xl mx-auto px-6 py-8">
-                        {activeTab === 'wallet' ? (
+                    {/* 主內容區 */}
+                    <main className="max-w-2xl mx-auto px-6 relative z-10">
+                        
+                        {activeTab === 'wallet' && (
                             <div className="animate-pop space-y-8">
-                                {/* 錢包卡片 */}
-                                <div className="relative overflow-hidden forest-gradient rounded-[3rem] p-10 text-white shadow-2xl border-4 border-[#F5F5DC]/20">
-                                    <div className="absolute top-4 right-8 opacity-20"><Icon name="Cloud" size={80} /></div>
-                                    <p className="text-[#E9EDC9] text-xs font-bold tracking-widest uppercase mb-2">My Forest Savings</p>
-                                    <h2 className="text-5xl font-bold flex items-baseline gap-2 mb-10">
-                                        <span className="text-2xl font-medium opacity-70">$</span>
-                                        {stats.balance.toLocaleString()}
-                                    </h2>
-                                    <div className="grid grid-cols-2 gap-6 relative z-10">
-                                        <div className="bg-white/10 backdrop-blur-md rounded-3xl p-5 border border-white/20">
-                                            <p className="text-[10px] font-bold text-[#E9EDC9] mb-1">新芽萌發 (收入)</p>
-                                            <p className="font-bold text-2xl tracking-tight">+ {stats.income.toLocaleString()}</p>
+                                {/* 資產卡片 */}
+                                <div className="ghibli-card forest-gradient p-10 text-white overflow-hidden shadow-2xl">
+                                    <div className="absolute top-2 right-4 opacity-10"><Icon name="Cloud" size={140} /></div>
+                                    <div className="absolute bottom-[-20px] left-8 opacity-10"><Icon name="Trees" size={160} /></div>
+                                    
+                                    <div className="relative z-10">
+                                        <p className="text-emerald-100 text-xs font-bold tracking-widest flex items-center gap-2 mb-2">
+                                            <Icon name="Wallet" size={14} /> 森林目前剩餘能量
+                                        </p>
+                                        <h2 className="text-5xl font-black mb-12">$ {stats.balance.toLocaleString()}</h2>
+                                        
+                                        <div className="grid grid-cols-2 gap-5">
+                                            <div className="bg-white/10 backdrop-blur-md rounded-[2rem] p-5 border border-white/20">
+                                                <p className="text-[10px] font-bold text-emerald-100 uppercase mb-1 flex items-center gap-1">
+                                                    <Icon name="TrendingUp" size={10} /> 本月新芽 (收入)
+                                                </p>
+                                                <p className="text-2xl font-bold tracking-tight">+ {stats.income.toLocaleString()}</p>
+                                            </div>
+                                            <div className="bg-white/10 backdrop-blur-md rounded-[2rem] p-5 border border-white/20">
+                                                <p className="text-[10px] font-bold text-orange-100 uppercase mb-1 flex items-center gap-1">
+                                                    <Icon name="TrendingDown" size={10} /> 本月落葉 (支出)
+                                                </p>
+                                                <p className="text-2xl font-bold tracking-tight">- {stats.expense.toLocaleString()}</p>
+                                            </div>
                                         </div>
-                                        <div className="bg-black/10 backdrop-blur-md rounded-3xl p-5 border border-white/10">
-                                            <p className="text-[10px] font-bold text-[#CCD5AE] mb-1">落葉歸根 (支出)</p>
-                                            <p className="font-bold text-2xl tracking-tight">- {stats.expense.toLocaleString()}</p>
+
+                                        <div className="mt-10 space-y-3">
+                                            <div className="flex justify-between text-[11px] font-black tracking-wider">
+                                                <span className="flex items-center gap-1.5"><Icon name="Activity" size={12} /> 森林預算消耗進度</span>
+                                                <span>{stats.budgetUsed}%</span>
+                                            </div>
+                                            <div className="w-full bg-black/20 h-4 rounded-full overflow-hidden p-[3px] shadow-inner">
+                                                <div 
+                                                    className={`h-full rounded-full transition-all duration-1000 ${Number(stats.budgetUsed) > 90 ? 'bg-orange-400' : 'bg-emerald-300'}`} 
+                                                    style={{ width: `${stats.budgetUsed}%` }}
+                                                ></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* 紀錄列表 */}
-                                <section className="space-y-4">
+                                {/* 最近日誌 */}
+                                <section className="space-y-5">
                                     <div className="flex justify-between items-center px-2">
-                                        <h3 className="font-bold text-xl text-[#5D4037] flex items-center gap-2">
-                                            <Icon name="List" size={22} className="text-[#4A6741]" />
-                                            生活紀錄
+                                        <h3 className="font-bold text-xl flex items-center gap-2.5 text-[#4A6741]">
+                                            <Icon name="ScrollText" size={24} /> 最近的森林足跡
                                         </h3>
-                                        <div className="flex bg-[#E8DCC4] p-1 rounded-2xl text-xs">
-                                            {['all', 'expense', 'income'].map(type => (
-                                                <button key={type} onClick={() => setFilterType(type)} className={`px-4 py-2 rounded-xl font-bold transition-all ${filterType === type ? 'bg-white text-[#4A6741] shadow-sm' : 'text-[#8B7355]'}`}>
-                                                    {type === 'all' ? '全部' : type === 'expense' ? '支出' : '收入'}
-                                                </button>
-                                            ))}
+                                        <div className="flex items-center gap-3">
+                                            <Icon name="Nut" size={18} className="text-[#BC6C25]" />
+                                            <Icon name="Sprout" size={18} className="text-[#4A6741]" />
                                         </div>
                                     </div>
-                                    <div className="space-y-4">
-                                        {transactions.filter(t => filterType === 'all' || t.type === filterType).length > 0 ? (
-                                            transactions.filter(t => filterType === 'all' || t.type === filterType).map(t => {
-                                                const info = categories[t.category] || INITIAL_CATEGORIES.food_daily;
-                                                return (
-                                                    <div key={t.id} className="bg-white p-5 rounded-[2rem] flex items-center gap-5 shadow-md border border-[#E8DCC4] group hover:bg-[#FDFBF7] transition-all">
-                                                        <div className={`${info.color} p-4 rounded-2xl text-white shadow-sm flex-shrink-0`}>
-                                                            <Icon name={info.icon} size={24} />
+                                    
+                                    <div className="space-y-4 pb-12">
+                                        {transactions.slice(0, 10).map(t => {
+                                            const info = INITIAL_CATEGORIES[t.category] || { label: '未知', color: 'bg-gray-300', icon: 'HelpCircle' };
+                                            return (
+                                                <div key={t.id} className="ghibli-card p-6 flex items-center gap-5 group hover:translate-y-[-2px] transition-all">
+                                                    <div className={`${info.color} p-4 rounded-[1.5rem] text-white shadow-md`}><Icon name={info.icon} size={28} /></div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between font-bold">
+                                                            <span className="text-lg text-[#5D4037]">{t.note || info.label}</span>
+                                                            <span className={`text-xl ${t.type === 'income' ? 'text-emerald-600' : 'text-orange-700'}`}>
+                                                                {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
+                                                            </span>
                                                         </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex justify-between items-start">
-                                                                <span className="font-bold text-lg text-[#5D4037] truncate">{t.note || info.label}</span>
-                                                                <span className={`font-bold text-xl ${t.type === 'income' ? 'text-[#4A6741]' : 'text-[#BC6C25]'}`}>
-                                                                    {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center mt-2">
-                                                                <span className="text-[11px] font-bold text-[#A69076] bg-[#F5F5DC] px-3 py-1 rounded-full">{t.date}</span>
-                                                                <button onClick={() => deleteTransaction(t.id)} className="text-[#D1C4B0] hover:text-[#BC6C25] transition-all opacity-0 group-hover:opacity-100">
-                                                                    <Icon name="Trash2" size={18} />
-                                                                </button>
-                                                            </div>
+                                                        <div className="flex justify-between items-center mt-2.5">
+                                                            <span className="text-[11px] font-bold text-[#A69076] bg-[#F5F5DC] px-3 py-1 rounded-full flex items-center gap-1.5">
+                                                                <Icon name="Calendar" size={11} /> {t.date}
+                                                            </span>
+                                                            <button onClick={() => deleteTransaction(t.id)} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-500 transition-all p-1">
+                                                                <Icon name="Trash2" size={18} />
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                );
-                                            })
-                                        ) : (
-                                            <div className="text-center py-20 bg-white/40 border-2 border-dashed border-[#E8DCC4] rounded-[3rem] flex flex-col items-center gap-4">
-                                                <Icon name="Cloud" size={48} className="text-[#D1C4B0]" />
-                                                <p className="font-medium text-[#A69076]">森林裡暫時沒有新的腳印...</p>
+                                                </div>
+                                            );
+                                        })}
+                                        {transactions.length === 0 && (
+                                            <div className="text-center py-24 bg-white/50 rounded-[3rem] border-2 border-dashed border-[#E8DCC4] flex flex-col items-center gap-4">
+                                                <Icon name="Bird" size={56} className="text-[#D1C4B0]" />
+                                                <p className="italic font-bold text-[#A69076]">森林此刻非常寧靜...</p>
                                             </div>
                                         )}
                                     </div>
                                 </section>
                             </div>
-                        ) : (
-                            <div className="animate-pop text-center py-20">
-                                <Icon name="Trees" size={64} className="text-[#4A6741] mb-4 opacity-50" />
-                                <p className="italic font-medium text-[#A69076]">森林分析與時光路徑正隨著微風趕來...</p>
-                                <p className="text-xs text-[#D1C4B0] mt-2">（此分頁功能正由森林精靈維護中）</p>
+                        )}
+
+                        {activeTab === 'stats' && (
+                            <div className="animate-pop space-y-6">
+                                <div className="ghibli-card p-8">
+                                    <h3 className="text-xl font-bold mb-10 flex items-center gap-2.5 text-[#4A6741]">
+                                        <Icon name="PieChart" /> 風的低語 (本月落葉比例)
+                                    </h3>
+                                    {stats.catStats.length > 0 ? (
+                                        <div className="space-y-7">
+                                            {stats.catStats.map(([cat, amount]) => {
+                                                const info = INITIAL_CATEGORIES[cat] || { label: '其他', color: 'bg-gray-300', icon: 'Trees' };
+                                                const percent = (amount / (stats.expense || 1) * 100).toFixed(1);
+                                                return (
+                                                    <div key={cat} className="space-y-3">
+                                                        <div className="flex justify-between text-sm font-bold text-[#8B7355]">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <Icon name={info.icon} size={18} />
+                                                                <span>{info.label}</span>
+                                                            </div>
+                                                            <span>{percent}% (${amount.toLocaleString()})</span>
+                                                        </div>
+                                                        <div className="w-full bg-[#F0EAD6] h-5 rounded-full overflow-hidden p-[3px] shadow-inner border border-white/40">
+                                                            <div className={`${info.color} h-full rounded-full transition-all duration-1000 shadow-sm`} style={{ width: `${percent}%` }}></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : <p className="text-center py-20 opacity-50 font-bold italic">目前森林裡還沒有任何數據可以分析...</p>}
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="ghibli-card p-6 flex flex-col items-center gap-3 bg-[#E9EDC9]">
+                                        <Icon name="Sprout" size={32} className="text-[#4A6741]" />
+                                        <p className="text-[10px] font-black text-[#4A6741]/60 uppercase">淨增長能量</p>
+                                        <h4 className="text-2xl font-black text-[#4A6741]">$ {stats.balance.toLocaleString()}</h4>
+                                    </div>
+                                    <div className="ghibli-card p-6 flex flex-col items-center gap-3 bg-[#FEFAE0]">
+                                        <Icon name="CloudRain" size={32} className="text-[#87CEEB]" />
+                                        <p className="text-[10px] font-black text-[#87CEEB] uppercase">平均每日支出</p>
+                                        <h4 className="text-2xl font-black text-[#5D4037]">$ {(stats.expense / 30).toFixed(0)}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'calendar' && (
+                            <div className="animate-pop space-y-6">
+                                <div className="ghibli-card p-8">
+                                    <div className="flex justify-between items-center mb-10">
+                                        <h3 className="text-xl font-bold flex items-center gap-2 text-[#5D4037]">
+                                            <Icon name="CalendarDays" className="text-[#87CEEB]" /> 森林時光印記
+                                        </h3>
+                                        <div className="text-xs font-black bg-[#E9EDC9] px-4 py-2 rounded-full border-2 border-[#CCD5AE] text-[#4A6741] flex items-center gap-2">
+                                            <Icon name="Sun" size={14} /> 2026年 5月
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-7 gap-3 mb-4">
+                                        {['日','一','二','三','四','五','六'].map(d => <div key={d} className="text-center text-[10px] font-black text-[#D1C4B0]">{d}</div>)}
+                                        {Array.from({ length: 30 }, (_, i) => {
+                                            const day = i + 1;
+                                            const dStr = `2026-05-${String(day).padStart(2, '0')}`;
+                                            const dayLogs = transactions.filter(t => t.date === dStr);
+                                            const dayExp = dayLogs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+                                            const isSelected = selectedDate === dStr;
+                                            return (
+                                                <button 
+                                                    key={day} 
+                                                    onClick={() => setSelectedDate(dStr)}
+                                                    className={`aspect-square flex flex-col items-center justify-center rounded-2xl transition-all border-2 relative ${isSelected ? 'border-[#4A6741] bg-white scale-110 z-10 shadow-lg' : 'border-transparent hover:bg-white/60'}`}
+                                                >
+                                                    <span className={`text-sm font-black ${dayExp > 0 ? 'text-orange-700' : isSelected ? 'text-[#4A6741]' : 'text-[#A69076]'}`}>{day}</span>
+                                                    {dayLogs.length > 0 && <div className={`w-1.5 h-1.5 rounded-full mt-1 ${dayExp > 0 ? 'bg-orange-400 animate-pulse' : 'bg-emerald-400'}`}></div>}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between px-3">
+                                        <div className="flex items-center gap-2 text-[#8B7355] font-black text-sm">
+                                            <Icon name="MapPin" size={16} /> {selectedDate} 的足跡
+                                        </div>
+                                        <div className="text-[10px] font-bold text-[#D1C4B0]">總共 {transactions.filter(t => t.date === selectedDate).length} 筆紀錄</div>
+                                    </div>
+                                    {transactions.filter(t => t.date === selectedDate).map(t => (
+                                        <div key={t.id} className="bg-white/80 backdrop-blur-sm p-5 rounded-[2.2rem] border-2 border-[#E8DCC4] flex justify-between items-center shadow-sm">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`${INITIAL_CATEGORIES[t.category]?.color} p-3 rounded-xl text-white shadow-sm`}><Icon name={INITIAL_CATEGORIES[t.category]?.icon} size={20} /></div>
+                                                <span className="font-bold text-[#5D4037]">{t.note || INITIAL_CATEGORIES[t.category]?.label}</span>
+                                            </div>
+                                            <span className={`font-black text-lg ${t.type === 'income' ? 'text-emerald-600' : 'text-orange-700'}`}>${t.amount.toLocaleString()}</span>
+                                        </div>
+                                    ))}
+                                    {transactions.filter(t => t.date === selectedDate).length === 0 && (
+                                        <div className="ghibli-card p-8 border-dashed bg-transparent text-center">
+                                            <Icon name="Wind" size={32} className="text-[#D1C4B0] mb-2 mx-auto" />
+                                            <p className="text-xs italic text-[#D1C4B0] font-bold">這一天，森林裡只有寧靜...</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </main>
 
-                    {/* 底部導覽列 */}
-                    <div className="fixed bottom-10 left-0 right-0 px-6 z-30">
-                        <nav className="max-w-xs mx-auto bg-white/90 backdrop-blur-xl border border-[#E8DCC4] p-2.5 rounded-[2.5rem] shadow-2xl flex justify-between items-center ring-8 ring-[#F9F6F0]/80">
-                            <button onClick={() => setActiveTab('wallet')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'wallet' ? 'bg-[#4A6741] text-white shadow-lg' : 'text-[#A69076]'}`}>
+                    {/* 底部導覽 */}
+                    <div className="fixed bottom-10 left-0 right-0 px-6 z-50">
+                        <nav className="max-w-xs mx-auto bg-white/90 backdrop-blur-xl border-2 border-[#E8DCC4] rounded-[3rem] p-2.5 flex justify-between items-center shadow-2xl ring-12 ring-[#F9F6F0]/90">
+                            <button onClick={() => setActiveTab('wallet')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] transition-all gap-1.5 ${activeTab === 'wallet' ? 'tab-active' : 'text-[#D1C4B0]'}`}>
                                 <Icon name="Wallet" size={24} />
+                                <span className="text-[10px] font-black tracking-widest">森林錢包</span>
                             </button>
-                            <button onClick={() => setActiveTab('stats')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'stats' ? 'bg-[#87CEEB] text-white shadow-lg' : 'text-[#A69076]'}`}>
+                            <button onClick={() => setActiveTab('stats')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] transition-all gap-1.5 ${activeTab === 'stats' ? 'tab-active' : 'text-[#D1C4B0]'}`}>
                                 <Icon name="PieChart" size={24} />
+                                <span className="text-[10px] font-black tracking-widest">魔法分析</span>
                             </button>
-                            <button onClick={() => setActiveTab('calendar')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'calendar' ? 'bg-[#D4A373] text-white shadow-lg' : 'text-[#A69076]'}`}>
-                                <Icon name="Calendar" size={24} />
+                            <button onClick={() => setActiveTab('calendar')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] transition-all gap-1.5 ${activeTab === 'calendar' ? 'tab-active' : 'text-[#D1C4B0]'}`}>
+                                <Icon name="CalendarDays" size={24} />
+                                <span className="text-[10px] font-black tracking-widest">時光路徑</span>
                             </button>
                         </nav>
                     </div>
 
                     {/* 彈出視窗：新增紀錄 */}
                     {isModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-                            <div className="absolute inset-0 bg-[#3E2723]/30 backdrop-blur-sm animate-fade-in" onClick={() => setIsModalOpen(false)}></div>
-                            <div className="bg-[#FDFBF7] w-full max-w-lg rounded-t-[3.5rem] sm:rounded-[3.5rem] p-10 relative z-10 animate-pop border-t-8 border-[#4A6741] shadow-2xl">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h2 className="text-2xl font-bold text-[#5D4037]">今日拾穗</h2>
-                                    <button onClick={() => setIsModalOpen(false)} className="p-2.5 bg-[#F5F5DC] rounded-full text-[#A69076]"><Icon name="X" size={24} /></button>
+                        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-300">
+                            <div className="absolute inset-0 bg-[#3E2723]/60 backdrop-blur-md" onClick={() => setIsModalOpen(false)}></div>
+                            <div className="bg-[#FDFBF7] w-full max-w-lg rounded-t-[4rem] sm:rounded-[4rem] p-10 relative z-10 border-t-8 border-[#4A6741] shadow-2xl animate-pop overflow-hidden">
+                                <div className="absolute -top-10 -right-10 opacity-5"><Icon name="Sprout" size={200} /></div>
+                                
+                                <div className="flex justify-between items-center mb-8 relative">
+                                    <h2 className="text-2xl font-black text-[#5D4037] flex items-center gap-2.5">
+                                        <Icon name="PenTool" className="text-emerald-600" /> 紀錄森林瞬間
+                                    </h2>
+                                    <button onClick={() => setIsModalOpen(false)} className="p-3 bg-[#F5F5DC] rounded-full text-[#A69076] btn-press"><Icon name="X" size={24} /></button>
                                 </div>
-                                <form onSubmit={handleSubmit} className="space-y-6">
-                                    <div className="flex p-1.5 bg-[#F5F5DC] rounded-[2.5rem] border border-[#E8DCC4]">
-                                        <button type="button" onClick={() => setFormData({...formData, type: 'expense'})} className={`flex-1 py-3 rounded-[2rem] font-bold transition-all ${formData.type === 'expense' ? 'bg-[#BC6C25] text-white shadow-md' : 'text-[#A69076]'}`}>落葉 (支出)</button>
-                                        <button type="button" onClick={() => setFormData({...formData, type: 'income'})} className={`flex-1 py-3 rounded-[2rem] font-bold transition-all ${formData.type === 'income' ? 'bg-[#4A6741] text-white shadow-md' : 'text-[#A69076]'}`}>新芽 (收入)</button>
+
+                                <form onSubmit={handleSubmit} className="space-y-8 relative">
+                                    <div className="flex bg-[#F0EAD6] p-2 rounded-[2.5rem] border-2 border-[#E8DCC4] gap-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setFormData({...formData, type: 'expense', category: 'food'})} 
+                                            className={`flex-1 py-4 rounded-[2rem] font-black transition-all flex items-center justify-center gap-2 ${formData.type === 'expense' ? 'bg-[#BC6C25] text-white shadow-lg' : 'text-[#A69076]'}`}
+                                        >
+                                            <Icon name="ArrowDownCircle" size={20} /> 落葉 (支出)
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setFormData({...formData, type: 'income', category: 'income'})} 
+                                            className={`flex-1 py-4 rounded-[2rem] font-black transition-all flex items-center justify-center gap-2 ${formData.type === 'income' ? 'bg-[#4A6741] text-white shadow-lg' : 'text-[#A69076]'}`}
+                                        >
+                                            <Icon name="ArrowUpCircle" size={20} /> 新芽 (收入)
+                                        </button>
                                     </div>
-                                    <div className="relative">
-                                        <span className="absolute left-8 top-1/2 -translate-y-1/2 text-3xl font-bold text-[#D1C4B0] group-focus-within:text-[#4A6741]">$</span>
-                                        <input type="number" required placeholder="0" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full bg-white border-4 border-[#F5F5DC] focus:border-[#E9EDC9] rounded-[2.5rem] py-6 pl-16 text-4xl font-bold text-[#5D4037] focus:outline-none transition-all placeholder:text-[#E8DCC4]" />
+
+                                    <div className="relative group">
+                                        <span className="absolute left-8 top-1/2 -translate-y-1/2 text-4xl font-black text-[#D1C4B0] group-focus-within:text-[#4A6741] transition-colors">$</span>
+                                        <input type="number" required placeholder="0" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full bg-white border-4 border-[#F5F5DC] rounded-[2.5rem] py-8 pl-16 text-5xl font-black text-[#5D4037] focus:outline-none shadow-inner" />
                                     </div>
-                                    <div className="grid grid-cols-3 gap-3 max-h-48 overflow-y-auto p-1 custom-scrollbar">
-                                        {Object.entries(categories).filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome).map(([key, info]) => (
-                                            <button key={key} type="button" onClick={() => setFormData({...formData, category: key})} className={`flex flex-col items-center gap-2 p-4 rounded-[2rem] border-4 transition-all ${formData.category === key ? 'border-[#4A6741] bg-[#E9EDC9] scale-105' : 'border-transparent bg-white shadow-sm'}`}>
-                                                <div className={`${info.color} p-2.5 rounded-xl text-white`}><Icon name={info.icon} size={20} /></div>
-                                                <span className="text-[10px] font-bold truncate w-full text-center">{info.label}</span>
-                                            </button>
-                                        ))}
+
+                                    <div className="space-y-4">
+                                        <p className="text-xs font-black text-[#A69076] ml-4 flex items-center gap-2"><Icon name="Tags" size={14} /> 挑選分類標籤</p>
+                                        <div className="grid grid-cols-4 gap-3 max-h-52 overflow-y-auto p-1 custom-scrollbar">
+                                            {Object.entries(INITIAL_CATEGORIES).filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome).map(([key, info]) => (
+                                                <button 
+                                                    key={key} type="button" 
+                                                    onClick={() => setFormData({...formData, category: key})} 
+                                                    className={`flex flex-col items-center gap-2.5 p-4 rounded-3xl border-4 transition-all active:scale-90 ${formData.category === key ? 'border-[#4A6741] bg-[#E9EDC9] shadow-md scale-105' : 'border-transparent bg-white shadow-sm hover:bg-gray-50'}`}
+                                                >
+                                                    <div className={`${info.color} p-3 rounded-2xl text-white shadow-sm`}><Icon name={info.icon} size={24} /></div>
+                                                    <span className="text-[10px] font-black truncate w-full text-center">{info.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-bold text-sm text-[#5D4037] focus:outline-none focus:border-[#E9EDC9]" />
-                                        <input type="text" placeholder="留個筆記..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-bold text-sm text-[#5D4037] focus:outline-none focus:border-[#E9EDC9]" />
+
+                                    <div className="grid grid-cols-2 gap-5">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-[#A69076] ml-3 flex items-center gap-1.5"><Icon name="Calendar" size={12} /> 日期</p>
+                                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-black text-sm text-[#5D4037] focus:outline-none focus:border-[#E9EDC9] shadow-sm" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-[#A69076] ml-3 flex items-center gap-1.5"><Icon name="Pen" size={12} /> 備註筆記</p>
+                                            <input type="text" placeholder="寫點什麼..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="w-full bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-black text-sm text-[#5D4037] focus:outline-none focus:border-[#E9EDC9] shadow-sm" />
+                                        </div>
                                     </div>
-                                    <button type="submit" className={`w-full py-5 rounded-[2.5rem] font-bold text-xl text-white shadow-xl transition-all active:scale-95 ${formData.type === 'income' ? 'bg-[#4A6741]' : 'bg-[#BC6C25]'}`}>寫入生活紀錄</button>
+
+                                    <button type="submit" className={`w-full py-6 rounded-[2.5rem] font-black text-2xl text-white shadow-xl transition-all btn-press flex items-center justify-center gap-3 ${formData.type === 'income' ? 'bg-[#4A6741] shadow-emerald-200' : 'bg-[#BC6C25] shadow-orange-200'}`}>
+                                        <Icon name="CheckCircle2" size={28} /> 保存這份森林記憶
+                                    </button>
                                 </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 設定彈窗 */}
+                    {isSettingOpen && (
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 animate-in zoom-in duration-300">
+                            <div className="absolute inset-0 bg-[#3E2723]/60 backdrop-blur-md" onClick={() => setIsSettingOpen(false)}></div>
+                            <div className="bg-[#FDFBF7] w-full max-w-md rounded-[3.5rem] p-10 relative z-10 border-b-8 border-[#D4A373] shadow-2xl animate-pop">
+                                <div className="flex justify-between items-center mb-10">
+                                    <h2 className="text-2xl font-black text-[#5D4037] flex items-center gap-3">
+                                        <Icon name="Settings" /> 森林維護員
+                                    </h2>
+                                    <button onClick={() => setIsSettingOpen(false)} className="p-2 bg-gray-100 rounded-full"><Icon name="X" size={20} /></button>
+                                </div>
+                                <div className="space-y-10">
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-black text-[#A69076] ml-4 flex items-center gap-2">
+                                            <Icon name="Trees" size={14} /> 森林的正式命名
+                                        </label>
+                                        <input 
+                                            type="text" value={forestName} 
+                                            onChange={e => setForestName(e.target.value)} 
+                                            className="w-full bg-white border-4 border-[#F5F5DC] rounded-[2rem] p-5 font-black text-lg focus:outline-none focus:border-[#4A6741] shadow-sm" 
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-black text-[#A69076] ml-4 flex items-center gap-2">
+                                            <Icon name="Target" size={14} /> 本月落葉限額 (預算目標)
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-bold text-[#D1C4B0]">$</span>
+                                            <input 
+                                                type="number" value={budget} 
+                                                onChange={e => setBudget(Number(e.target.value))} 
+                                                className="w-full bg-white border-4 border-[#F5F5DC] rounded-[2rem] p-5 pl-12 font-black text-lg focus:outline-none focus:border-[#4A6741] shadow-sm" 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 pt-4">
+                                        <button onClick={exportCSV} className="w-full py-4 bg-white border-2 border-emerald-100 text-[#4A6741] rounded-[1.8rem] font-black text-sm shadow-sm btn-press flex items-center justify-center gap-3">
+                                            <Icon name="FileSpreadsheet" size={20} /> 匯出森林帳本 (CSV)
+                                        </button>
+                                        <button onClick={() => setIsSettingOpen(false)} className="w-full py-5 bg-[#4A6741] text-white rounded-[2.5rem] font-black text-lg shadow-xl shadow-emerald-100 btn-press flex items-center justify-center gap-3">
+                                            <Icon name="Save" size={22} /> 確認並保存設定
+                                        </button>
+                                    </div>
+
+                                    <div className="text-center pt-2">
+                                        <p className="text-[11px] font-black text-[#D1C4B0] italic flex items-center justify-center gap-2">
+                                            <Icon name="Heart" size={12} className="text-rose-200" /> 守護森林，從細心紀錄開始
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
