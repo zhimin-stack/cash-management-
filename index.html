@@ -7,16 +7,12 @@
     <!-- ========================================== -->
     <!-- 網頁標籤圖標 (Favicon) 設定                -->
     <!-- ========================================== -->
-    <!-- ⚠️ 請將您的網頁圖標命名為 favicon.png 並與 index.html 放在同一個資料夾 -->
     <link rel="icon" type="image/png" href="./favicon.png">
     
     <!-- Apple iOS 加入主畫面圖標設定 -->
     <link rel="apple-touch-icon" href="./favicon.png">
-    <!-- 設定 iOS 加入主畫面時的標題 -->
     <meta name="apple-mobile-web-app-title" content="森林記帳">
-    <!-- 讓網頁以全螢幕模式運行 (隱藏 Safari 網址列) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <!-- 設定狀態列的樣式 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <!-- ========================================== -->
@@ -95,6 +91,18 @@
             100% { transform: translateY(110vh) rotate(360deg) translateX(20px); opacity: 0; }
         }
 
+        /* 刪除模式抖動動畫 */
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+        .wiggle-animation { animation: wiggle 0.3s ease-in-out infinite; }
+        .prevent-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
         .btn-press:active { transform: scale(0.92); }
         .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes pop {
@@ -139,15 +147,19 @@
         };
 
         const INITIAL_CATEGORIES = {
-            'food': { label: '晨間食事', icon: 'Coffee', color: 'bg-[#D4A373]' },
-            'meal': { label: '豐盛餐飲', icon: 'Utensils', color: 'bg-[#4A6741]' },
-            'transport': { label: '林間穿梭', icon: 'Bus', color: 'bg-[#87CEEB]' },
-            'shopping': { label: '生活收穫', icon: 'ShoppingBag', color: 'bg-[#BC6C25]' },
-            'play': { label: '閒暇時光', icon: 'Gamepad2', color: 'bg-[#CCD5AE]' },
-            'home': { label: '避風港灣', icon: 'Home', color: 'bg-[#FAEDCD] text-gray-700' },
-            'medical': { label: '草藥護理', icon: 'Heart', color: 'bg-[#E5989B]' },
-            'income': { label: '辛勤獲取', icon: 'Sprout', color: 'bg-[#4A6741]', isIncome: true }
+            'food': { label: '晨間食事', icon: 'Coffee', color: 'bg-[#D4A373]', isCustom: false },
+            'meal': { label: '豐盛餐飲', icon: 'Utensils', color: 'bg-[#4A6741]', isCustom: false },
+            'transport': { label: '林間穿梭', icon: 'Bus', color: 'bg-[#87CEEB]', isCustom: false },
+            'shopping': { label: '生活收穫', icon: 'ShoppingBag', color: 'bg-[#BC6C25]', isCustom: false },
+            'play': { label: '閒暇時光', icon: 'Gamepad2', color: 'bg-[#CCD5AE]', isCustom: false },
+            'home': { label: '避風港灣', icon: 'Home', color: 'bg-[#FAEDCD]', isCustom: false },
+            'medical': { label: '草藥護理', icon: 'Heart', color: 'bg-[#E5989B]', isCustom: false },
+            'income': { label: '辛勤獲取', icon: 'Sprout', color: 'bg-[#4A6741]', isIncome: true, isCustom: false }
         };
+
+        // 自訂圖示池與顏色池
+        const CUSTOM_ICONS = ['Coffee', 'Utensils', 'Bus', 'ShoppingBag', 'Gamepad2', 'Heart', 'Sprout', 'Trees', 'Cloud', 'Gift', 'Car', 'Smartphone', 'Star', 'Music', 'Book', 'Wrench'];
+        const CUSTOM_COLORS = ['bg-[#4A6741]', 'bg-[#87CEEB]', 'bg-[#D4A373]', 'bg-[#E9EDC9]', 'bg-[#E5989B]', 'bg-[#BC6C25]', 'bg-[#A3B18A]', 'bg-[#6D6875]'];
 
         const FloatingLeaves = () => {
             return (
@@ -168,16 +180,26 @@
         function App() {
             const [activeTab, setActiveTab] = useState('wallet');
             const [forestName, setForestName] = useState(() => localStorage.getItem('forest_name') || '我的秘密森林');
+            
+            // 預算處理：修復刪除變成0的問題
             const [budget, setBudget] = useState(() => {
                 const saved = localStorage.getItem('forest_budget');
                 if (saved === null) return 15000;
                 if (saved === '') return '';
                 return Number(saved);
             });
+            
             const [transactions, setTransactions] = useState(() => {
                 const saved = localStorage.getItem('ghibli_accounting_data');
                 return saved ? JSON.parse(saved) : [];
             });
+            
+            // 類別狀態
+            const [categories, setCategories] = useState(() => {
+                const saved = localStorage.getItem('forest_categories');
+                return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+            });
+
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isSettingOpen, setIsSettingOpen] = useState(false);
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -186,11 +208,18 @@
                 type: 'expense', amount: '', category: 'food', note: '', date: new Date().toISOString().split('T')[0]
             });
 
+            // 自訂分類與長按刪除相關狀態
+            const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+            const [newCategory, setNewCategory] = useState({ label: '', icon: 'Leaf', color: 'bg-[#4A6741]' });
+            const [isDeleteMode, setIsDeleteMode] = useState(false);
+            const pressTimer = useRef(null);
+
             useEffect(() => {
                 localStorage.setItem('ghibli_accounting_data', JSON.stringify(transactions));
                 localStorage.setItem('forest_name', forestName);
                 localStorage.setItem('forest_budget', budget);
-            }, [transactions, forestName, budget]);
+                localStorage.setItem('forest_categories', JSON.stringify(categories));
+            }, [transactions, forestName, budget, categories]);
 
             const getDaysInMonth = (dateStr) => {
                 const [year, month] = dateStr.split('-');
@@ -211,7 +240,7 @@
                 });
                 return {
                     income, expense, balance: income - expense,
-                    budgetUsed: Math.min(100, (expense / (budget || 1) * 100)).toFixed(1),
+                    budgetUsed: budget ? Math.min(100, (expense / budget * 100)).toFixed(1) : 0,
                     catStats: Object.entries(catStats).sort((a,b) => b[1] - a[1])
                 };
             }, [transactions, budget]);
@@ -222,12 +251,13 @@
                 setTransactions([{ ...formData, id: Date.now(), amount: Number(formData.amount) }, ...transactions]);
                 setIsModalOpen(false);
                 setFormData({ ...formData, amount: '', note: '' });
+                setIsDeleteMode(false);
             };
 
             const exportCSV = () => {
                 let csv = "日期,類型,類別,金額,備註\n";
                 transactions.forEach(t => {
-                    csv += `${t.date},${t.type === 'income' ? '收穫' : '落葉'},${INITIAL_CATEGORIES[t.category]?.label || '其他'},${t.amount},${t.note}\n`;
+                    csv += `${t.date},${t.type === 'income' ? '收穫' : '落葉'},${categories[t.category]?.label || '其他'},${t.amount},${t.note}\n`;
                 });
                 const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
@@ -235,6 +265,43 @@
                 link.href = url;
                 link.download = `森林帳本_${new Date().toLocaleDateString()}.csv`;
                 link.click();
+            };
+
+            // 處理長按事件
+            const handlePressStart = () => {
+                pressTimer.current = setTimeout(() => {
+                    setIsDeleteMode(true);
+                }, 600); // 長按 600ms 觸發
+            };
+            const handlePressEnd = () => {
+                if (pressTimer.current) clearTimeout(pressTimer.current);
+            };
+
+            // 新增自訂分類
+            const handleAddCategory = () => {
+                if (!newCategory.label.trim()) return;
+                const newKey = `custom_${Date.now()}`;
+                setCategories(prev => ({
+                    ...prev,
+                    [newKey]: { ...newCategory, isCustom: true, isIncome: formData.type === 'income' }
+                }));
+                setIsAddCategoryOpen(false);
+                setNewCategory({ label: '', icon: 'Leaf', color: 'bg-[#4A6741]' });
+            };
+
+            // 刪除自訂分類
+            const handleDeleteCategory = (keyToRemove, e) => {
+                e.stopPropagation();
+                setCategories(prev => {
+                    const newCats = { ...prev };
+                    delete newCats[keyToRemove];
+                    return newCats;
+                });
+                if (formData.category === keyToRemove) {
+                    // 如果刪除的是目前選中的，就跳回第一個可用的
+                    const firstAvailable = Object.entries(categories).find(([k, v]) => k !== keyToRemove && v.isIncome === (formData.type === 'income'));
+                    if (firstAvailable) setFormData(f => ({ ...f, category: firstAvailable[0] }));
+                }
             };
 
             return (
@@ -291,7 +358,7 @@
                                     <h3 className="font-bold text-lg flex items-center gap-2.5 text-[#4A6741]"><Icon name="ScrollText" size={24} /> 最近的足跡</h3>
                                     <div className="space-y-4 pb-12">
                                         {transactions.slice(0, 10).map(t => {
-                                            const info = INITIAL_CATEGORIES[t.category] || { label: '其他', icon: 'Leaf', color: 'bg-gray-400' };
+                                            const info = categories[t.category] || { label: '其他', icon: 'Leaf', color: 'bg-gray-400' };
                                             return (
                                                 <div key={t.id} className="ghibli-card p-5 flex items-center gap-4 sm:gap-5 group active:scale-98 transition-all">
                                                     <div className={`${info.color} p-4 rounded-2xl text-white shadow-md`}><Icon name={info.icon} size={24} /></div>
@@ -321,7 +388,7 @@
                                     <h3 className="text-xl font-bold mb-8 flex items-center gap-2.5 text-[#4A6741]"><Icon name="PieChart" size={24} /> 森林分析 (本月)</h3>
                                     <div className="space-y-6">
                                         {stats.catStats.map(([cat, amount]) => {
-                                            const info = INITIAL_CATEGORIES[cat] || { label: '其他', color: 'bg-gray-300', icon: 'Leaf' };
+                                            const info = categories[cat] || { label: '其他', color: 'bg-gray-300', icon: 'Leaf' };
                                             const percent = (amount / (stats.expense || 1) * 100).toFixed(1);
                                             return (
                                                 <div key={cat} className="space-y-2">
@@ -390,7 +457,7 @@
                                     </div>
                                     
                                     {transactions.filter(t => t.date === selectedDate).map(t => {
-                                        const info = INITIAL_CATEGORIES[t.category] || { label: '其他', color: 'bg-gray-400', icon: 'Leaf' };
+                                        const info = categories[t.category] || { label: '其他', color: 'bg-gray-400', icon: 'Leaf' };
                                         return (
                                             <div key={t.id} className="bg-white/80 border-2 border-[#E8DCC4] p-5 rounded-[2rem] flex justify-between items-center shadow-sm">
                                                 <div className="flex items-center gap-4">
@@ -433,46 +500,152 @@
                         </div>
                     </nav>
 
-                    {/* 新增紀錄彈窗 (手機版安全排版設計) */}
+                    {/* ===================== 新增紀錄彈窗 ===================== */}
                     {isModalOpen && (
                         <div className="fixed inset-0 z-[60] flex items-end justify-center">
-                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setIsModalOpen(false); setIsDeleteMode(false); }}></div>
                             <div className="bg-[#FDFBF7] w-full max-w-lg rounded-t-[3rem] sm:rounded-t-[4rem] p-6 sm:p-10 relative z-10 border-t-8 border-[#4A6741] shadow-2xl animate-pop max-h-[90vh] overflow-y-auto custom-scrollbar">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-xl font-black text-[#5D4037] flex items-center gap-2.5"><Icon name="PenTool" className="text-emerald-600" /> 紀錄瞬間</h2>
-                                    <button onClick={() => setIsModalOpen(false)} className="p-2.5 bg-[#F5F5DC] rounded-full text-[#A69076] btn-press"><Icon name="X" size={24} /></button>
+                                    <h2 className="text-xl font-black text-[#5D4037] flex items-center gap-2.5">
+                                        <Icon name="PenTool" className="text-emerald-600" /> 紀錄瞬間
+                                    </h2>
+                                    <div className="flex items-center gap-2">
+                                        {/* 如果在刪除模式，顯示完成按鈕 */}
+                                        {isDeleteMode && (
+                                            <button onClick={() => setIsDeleteMode(false)} className="px-4 py-2 bg-rose-100 text-rose-700 rounded-full font-bold text-xs btn-press">
+                                                完成刪除
+                                            </button>
+                                        )}
+                                        <button onClick={() => { setIsModalOpen(false); setIsDeleteMode(false); }} className="p-2.5 bg-[#F5F5DC] rounded-full text-[#A69076] btn-press">
+                                            <Icon name="X" size={24} />
+                                        </button>
+                                    </div>
                                 </div>
+                                
                                 <form onSubmit={handleSubmit} className="space-y-6">
+                                    {/* 收支切換 */}
                                     <div className="flex bg-[#F0EAD6] p-1.5 rounded-[2.5rem] border-2 border-[#E8DCC4] gap-2">
                                         <button type="button" onClick={() => setFormData({...formData, type: 'expense', category: 'food'})} className={`flex-1 py-3.5 rounded-[2rem] font-black transition-all ${formData.type === 'expense' ? 'bg-[#BC6C25] text-white shadow-md' : 'text-[#A69076]'}`}>支出</button>
                                         <button type="button" onClick={() => setFormData({...formData, type: 'income', category: 'income'})} className={`flex-1 py-3.5 rounded-[2rem] font-black transition-all ${formData.type === 'income' ? 'bg-[#4A6741] text-white shadow-md' : 'text-[#A69076]'}`}>收入</button>
                                     </div>
+                                    
+                                    {/* 金額輸入 */}
                                     <div className="relative group">
                                         <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-[#D1C4B0]">$</span>
                                         <input type="number" required placeholder="0" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full bg-white border-4 border-[#F5F5DC] rounded-[2rem] py-6 pl-14 text-3xl font-black focus:outline-none shadow-inner" />
                                     </div>
                                     
-                                    {/* 安全的手機版 3 欄格柵設計，文字自動換行不截斷 */}
-                                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                        {Object.entries(INITIAL_CATEGORIES).filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome).map(([key, info]) => (
-                                            <button key={key} type="button" onClick={() => setFormData({...formData, category: key})} className={`flex flex-col items-center justify-center p-3 rounded-[1.5rem] border-4 transition-all btn-press ${formData.category === key ? 'border-[#4A6741] bg-[#E9EDC9]' : 'border-transparent bg-white shadow-sm'}`}>
-                                                <div className={`${info.color} p-3 rounded-xl text-white shadow-sm mb-2`}><Icon name={info.icon} size={24} /></div>
-                                                <span className="text-[12px] font-black leading-tight text-center whitespace-normal break-words">{info.label}</span>
-                                            </button>
-                                        ))}
+                                    {/* 分類標籤區 */}
+                                    <div>
+                                        <p className="text-xs font-bold text-[#A69076] mb-3 ml-2 flex items-center justify-between">
+                                            <span><Icon name="Tag" size={14} className="inline mr-1" /> 挑選分類 (長按可刪除自訂項目)</span>
+                                        </p>
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                                            {Object.entries(categories).filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome).map(([key, info]) => (
+                                                <div key={key} className="relative">
+                                                    <button 
+                                                        type="button" 
+                                                        onMouseDown={handlePressStart}
+                                                        onMouseUp={handlePressEnd}
+                                                        onMouseLeave={handlePressEnd}
+                                                        onTouchStart={handlePressStart}
+                                                        onTouchEnd={handlePressEnd}
+                                                        onClick={() => {
+                                                            if (!isDeleteMode) setFormData({...formData, category: key});
+                                                        }} 
+                                                        className={`w-full flex flex-col items-center justify-center p-3 rounded-[1.5rem] border-4 transition-all prevent-select ${formData.category === key && !isDeleteMode ? 'border-[#4A6741] bg-[#E9EDC9]' : 'border-transparent bg-white shadow-sm'} ${isDeleteMode ? 'wiggle-animation' : 'btn-press'}`}
+                                                    >
+                                                        <div className={`${info.color} p-3 rounded-xl text-white shadow-sm mb-2`}><Icon name={info.icon} size={24} /></div>
+                                                        <span className="text-[12px] font-black leading-tight text-center whitespace-normal break-words">{info.label}</span>
+                                                    </button>
+                                                    
+                                                    {/* 刪除按鈕標籤 (僅自訂類別可刪除) */}
+                                                    {isDeleteMode && info.isCustom && (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => handleDeleteCategory(key, e)}
+                                                            className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1.5 shadow-lg border-2 border-white z-10"
+                                                        >
+                                                            <Icon name="X" size={12} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            
+                                            {/* 新增自訂按鈕 */}
+                                            {!isDeleteMode && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setIsAddCategoryOpen(true)} 
+                                                    className="flex flex-col items-center justify-center p-3 rounded-[1.5rem] border-4 border-dashed border-[#D1C4B0] bg-transparent transition-all btn-press opacity-70 hover:opacity-100"
+                                                >
+                                                    <div className="bg-[#E8DCC4] p-3 rounded-xl text-[#8B7355] shadow-sm mb-2"><Icon name="Plus" size={24} /></div>
+                                                    <span className="text-[12px] font-black leading-tight text-center whitespace-normal break-words text-[#8B7355]">自訂</span>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     
+                                    {/* 日期與備註 */}
                                     <div className="grid grid-cols-1 gap-3">
                                         <div className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 flex items-center gap-4 shadow-sm"><Icon name="Calendar" size={20} className="text-[#A69076]" /><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="flex-1 font-bold text-sm focus:outline-none bg-transparent" /></div>
                                         <div className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 flex items-center gap-4 shadow-sm"><Icon name="Pen" size={20} className="text-[#A69076]" /><input type="text" placeholder="備註..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="flex-1 font-bold text-sm focus:outline-none bg-transparent" /></div>
                                     </div>
+                                    
                                     <button type="submit" className={`w-full py-5 rounded-[2rem] font-black text-xl text-white shadow-xl btn-press ${formData.type === 'income' ? 'bg-[#4A6741]' : 'bg-[#BC6C25]'}`}>保存森林回憶</button>
                                 </form>
                             </div>
                         </div>
                     )}
 
-                    {/* 設定彈窗 */}
+                    {/* ===================== 新增自訂分類精靈 ===================== */}
+                    {isAddCategoryOpen && (
+                        <div className="fixed inset-0 z-[80] flex items-center justify-center p-6">
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsAddCategoryOpen(false)}></div>
+                            <div className="bg-[#FDFBF7] w-full max-w-sm rounded-[3rem] p-8 relative z-10 border-b-8 border-[#4A6741] shadow-2xl animate-pop">
+                                <h2 className="text-xl font-black mb-6 flex items-center gap-2 text-[#5D4037]">
+                                    <Icon name="PlusCircle" /> 新增專屬分類
+                                </h2>
+                                
+                                <div className="space-y-6">
+                                    {/* 名稱 */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-[#A69076]">標籤名稱</label>
+                                        <input type="text" placeholder="例如：飲料、寵物..." value={newCategory.label} onChange={e => setNewCategory({...newCategory, label: e.target.value})} className="w-full bg-white border-4 border-[#F5F5DC] rounded-2xl p-4 font-black focus:outline-none focus:border-[#4A6741]" />
+                                    </div>
+                                    
+                                    {/* 圖示選擇 */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-[#A69076]">代表圖案</label>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {CUSTOM_ICONS.map(icon => (
+                                                <button key={icon} onClick={() => setNewCategory({...newCategory, icon})} className={`p-3 rounded-xl flex items-center justify-center transition-all ${newCategory.icon === icon ? 'bg-[#4A6741] text-white shadow-md' : 'bg-white text-[#A69076] border-2 border-[#F5F5DC]'}`}>
+                                                    <Icon name={icon} size={20} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 顏色選擇 */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-[#A69076]">專屬顏色</label>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {CUSTOM_COLORS.map(color => (
+                                                <button key={color} onClick={() => setNewCategory({...newCategory, color})} className={`h-10 rounded-xl transition-all ${color} ${newCategory.color === color ? 'ring-4 ring-[#E8DCC4] scale-110' : 'opacity-80'}`}></button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-2 flex gap-3">
+                                        <button onClick={() => setIsAddCategoryOpen(false)} className="flex-1 py-4 bg-[#F5F5DC] text-[#A69076] rounded-2xl font-black btn-press">取消</button>
+                                        <button onClick={handleAddCategory} disabled={!newCategory.label.trim()} className="flex-1 py-4 bg-[#4A6741] text-white rounded-2xl font-black shadow-md btn-press disabled:opacity-50 disabled:active:scale-100">確認新增</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===================== 設定彈窗 ===================== */}
                     {isSettingOpen && (
                         <div className="fixed inset-0 z-[70] flex items-center justify-center p-6">
                             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsSettingOpen(false)}></div>
