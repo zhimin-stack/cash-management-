@@ -1,430 +1,327 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Wallet, 
-  TrendingUp, 
-  TrendingDown, 
-  PieChart, 
-  List, 
-  Calendar,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Home,
-  Coffee,
-  CheckCircle2,
-  X,
-  Settings,
-  Heart,
-  Gamepad2,
-  Gift,
-  Briefcase,
-  Smartphone,
-  Pizza,
-  IceCream,
-  Bus,
-  Sparkles,
-  Sprout,
-  Trees,
-  Cloud,
-  Navigation,
-  Wind,
-  Stars,
-  Flower
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>森林記帳小筆記 - 森林裡的每一分收穫與落葉</title>
+    <!-- 引入必要的 CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #F9F6F0;
+            color: #5D4037;
+            margin: 0;
+            padding: 0;
+        }
 
-// 吉卜力風格可選圖標池
-const ICON_OPTIONS = {
-  Utensils, Car, ShoppingBag, Home, Coffee, Sprout, Heart, 
-  Gamepad2, Gift, Briefcase, Smartphone, Pizza, Trees, Bus, Cloud, Navigation, Wind, Flower
-};
+        /* 吉卜力風格的自定義樣式 */
+        .ghibli-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid #E8DCC4;
+            border-radius: 2.5rem;
+            box-shadow: 0 10px 30px -5px rgba(74, 103, 65, 0.1);
+        }
 
-// 森林自然配色
-const COLOR_OPTIONS = [
-  'bg-[#4A6741]', // 森林綠
-  'bg-[#87CEEB]', // 天空藍
-  'bg-[#D4A373]', // 橡木棕
-  'bg-[#E9EDC9]', // 草地綠
-  'bg-[#FEFAE0]', // 奶油黃
-  'bg-[#FAEDCD]', // 羊皮紙
-  'bg-[#CCD5AE]', // 嫩葉色
-  'bg-[#BC6C25]'  // 落葉褐
-];
+        .forest-gradient {
+            background: linear-gradient(135deg, #4A6741 0%, #5D7A52 50%, #3E5638 100%);
+        }
 
-const INITIAL_CATEGORIES = {
-  'food_morning': { label: '晨之餐', icon: 'Coffee', color: 'bg-[#D4A373]' },
-  'food_daily': { label: '日常食', icon: 'Utensils', color: 'bg-[#4A6741]' },
-  'transport': { label: '旅途上', icon: 'Bus', color: 'bg-[#87CEEB]' },
-  'shopping': { label: '生活物', icon: 'ShoppingBag', color: 'bg-[#BC6C25]' },
-  'entertainment': { label: '閒暇時', icon: 'Gamepad2', color: 'bg-[#CCD5AE]' },
-  'home': { label: '避風港', icon: 'Home', color: 'bg-[#FAEDCD] text-gray-700' },
-  'income': { label: '勤勉獲', icon: 'Sprout', color: 'bg-[#4A6741]', isIncome: true }
-};
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E8DCC4;
+            border-radius: 20px;
+        }
+        
+        .animate-pop {
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes pop {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
 
-const App = () => {
-  const [activeTab, setActiveTab] = useState('wallet');
-  const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('ghibli_accounting_data');
-    return saved ? JSON.parse(saved) : [];
-  });
+        input[type="date"]::-webkit-inner-spin-button,
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: sepia(1) saturate(2) hue-rotate(45deg);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-  const [categories, setCategories] = useState(() => {
-    const saved = localStorage.getItem('ghibli_categories');
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-  });
-  
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSettingOpen, setIsSettingOpen] = useState(false);
-  const [isDeleteMode, setIsDeleteMode] = useState(false);
-  const [filterType, setFilterType] = useState('all');
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef } = React;
 
-  const [formData, setFormData] = useState({
-    type: 'expense',
-    amount: '',
-    category: 'food_morning',
-    note: '',
-    date: new Date().toISOString().split('T')[0]
-  });
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const ref = useRef(null);
+            
+            useEffect(() => {
+                // 確保 window.lucide 已載入且包含 icons 屬性
+                const lucideLib = window.lucide;
+                if (ref.current && lucideLib && lucideLib.icons) {
+                    try {
+                        const iconData = lucideLib.icons[name];
+                        if (iconData) {
+                            // 清空舊內容並重新建立圖標
+                            ref.current.innerHTML = '';
+                            const svgElement = lucideLib.createIcons({
+                                icons: { [name]: iconData },
+                                attrs: { 
+                                    strokeWidth: 2.5, 
+                                    width: size, 
+                                    height: size,
+                                    class: className 
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        console.error(`無法載入圖標: ${name}`, err);
+                    }
+                }
+            }, [name, size, className]);
 
-  const [newCatData, setNewCatData] = useState({
-    label: '',
-    icon: 'Sprout',
-    color: 'bg-[#4A6741]'
-  });
+            // 提供一個具有固定寬高的容器，防止版面跳動
+            return <span 
+                ref={ref} 
+                className={`inline-flex items-center justify-center ${className}`} 
+                style={{ width: size, height: size, minWidth: size }}
+            />;
+        };
 
-  const longPressTimer = useRef(null);
+        const INITIAL_CATEGORIES = {
+            'food_morning': { label: '晨之餐', icon: 'Coffee', color: 'bg-[#D4A373]' },
+            'food_daily': { label: '日常食', icon: 'Utensils', color: 'bg-[#4A6741]' },
+            'transport': { label: '旅途上', icon: 'Bus', color: 'bg-[#87CEEB]' },
+            'shopping': { label: '生活物', icon: 'ShoppingBag', color: 'bg-[#BC6C25]' },
+            'entertainment': { label: '閒暇時', icon: 'Gamepad2', color: 'bg-[#CCD5AE]' },
+            'home': { label: '避風港', icon: 'Home', color: 'bg-[#FAEDCD] text-gray-700' },
+            'income': { label: '勤勉獲', icon: 'Sprout', color: 'bg-[#4A6741]', isIncome: true }
+        };
 
-  useEffect(() => {
-    localStorage.setItem('ghibli_accounting_data', JSON.stringify(transactions));
-    localStorage.setItem('ghibli_categories', JSON.stringify(categories));
-  }, [transactions, categories]);
+        const COLOR_OPTIONS = [
+            'bg-[#4A6741]', 'bg-[#87CEEB]', 'bg-[#D4A373]', 'bg-[#E9EDC9]', 
+            'bg-[#FEFAE0]', 'bg-[#FAEDCD]', 'bg-[#CCD5AE]', 'bg-[#BC6C25]'
+        ];
 
-  const stats = useMemo(() => {
-    const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
-    const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
-    return { income, expense, balance: income - expense };
-  }, [transactions]);
+        const ICON_OPTIONS = [
+            'Utensils', 'Car', 'ShoppingBag', 'Home', 'Coffee', 'Sprout', 'Heart', 
+            'Gamepad2', 'Gift', 'Briefcase', 'Smartphone', 'Pizza', 'Trees', 'Bus', 
+            'Cloud', 'Navigation', 'Wind', 'Flower'
+        ];
 
-  const categoryStats = useMemo(() => {
-    const expensesOnly = transactions.filter(t => t.type === 'expense');
-    const totals = {};
-    expensesOnly.forEach(t => {
-      totals[t.category] = (totals[t.category] || 0) + Number(t.amount);
-    });
-    return Object.entries(totals).sort((a, b) => b[1] - a[1]);
-  }, [transactions]);
+        function App() {
+            const [activeTab, setActiveTab] = useState('wallet');
+            const [transactions, setTransactions] = useState(() => {
+                const saved = localStorage.getItem('ghibli_accounting_data');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [categories, setCategories] = useState(() => {
+                const saved = localStorage.getItem('ghibli_categories');
+                return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+            });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.amount || formData.amount <= 0) return;
-    const newTransaction = { ...formData, id: Date.now(), amount: Number(formData.amount) };
-    setTransactions([newTransaction, ...transactions]);
-    setIsModalOpen(false);
-    resetForm();
-  };
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [isSettingOpen, setIsSettingOpen] = useState(false);
+            const [filterType, setFilterType] = useState('all');
+            const [formData, setFormData] = useState({
+                type: 'expense', amount: '', category: 'food_morning', note: '',
+                date: new Date().toISOString().split('T')[0]
+            });
 
-  const resetForm = () => {
-    setFormData({
-      type: 'expense',
-      amount: '',
-      category: Object.keys(categories).find(k => !categories[k].isIncome) || 'food_morning',
-      note: '',
-      date: new Date().toISOString().split('T')[0]
-    });
-    setIsDeleteMode(false);
-  };
+            useEffect(() => {
+                localStorage.setItem('ghibli_accounting_data', JSON.stringify(transactions));
+                localStorage.setItem('ghibli_categories', JSON.stringify(categories));
+            }, [transactions, categories]);
 
-  const handleAddCategory = () => {
-    if (!newCatData.label) return;
-    const key = `custom_${Date.now()}`;
-    setCategories({ ...categories, [key]: { ...newCatData } });
-    setNewCatData({ label: '', icon: 'Sprout', color: 'bg-[#4A6741]' });
-  };
+            const stats = useMemo(() => {
+                const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+                const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+                return { income, expense, balance: income - expense };
+            }, [transactions]);
 
-  const deleteTransaction = (id) => setTransactions(transactions.filter(t => t.id !== id));
-  
-  const deleteCategory = (key) => {
-    const newCats = { ...categories };
-    delete newCats[key];
-    setCategories(newCats);
-  };
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!formData.amount || formData.amount <= 0) return;
+                const newTransaction = { ...formData, id: Date.now(), amount: Number(formData.amount) };
+                setTransactions([newTransaction, ...transactions]);
+                setIsModalOpen(false);
+                setFormData({ ...formData, amount: '', note: '' });
+            };
 
-  const startPress = () => longPressTimer.current = setTimeout(() => setIsDeleteMode(true), 600);
-  const endPress = () => longPressTimer.current && clearTimeout(longPressTimer.current);
+            const deleteTransaction = (id) => setTransactions(transactions.filter(t => t.id !== id));
 
-  const renderIcon = (iconName, size = 20) => {
-    const IconComp = ICON_OPTIONS[iconName] || Heart;
-    return <IconComp size={size} />;
-  };
+            return (
+                <div className="min-h-screen pb-32">
+                    {/* 頂部裝飾 */}
+                    <div className="h-2 bg-gradient-to-r from-[#4A6741] via-[#87CEEB] to-[#D4A373]"></div>
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'stats':
-        return (
-          <section className="animate-in fade-in duration-700 space-y-6">
-            <div className="bg-white/80 backdrop-blur-sm rounded-[2.5rem] p-8 shadow-lg border border-[#E8DCC4]">
-              <h3 className="font-bold text-[#5D4037] mb-8 flex items-center gap-2">
-                <Wind size={22} className="text-[#4A6741]" /> 
-                風的低語（支出分析）
-              </h3>
-              {categoryStats.length > 0 ? (
-                <div className="space-y-6">
-                  {categoryStats.map(([cat, amount]) => {
-                    const percentage = ((amount / stats.expense) * 100).toFixed(1);
-                    const info = categories[cat] || { label: '秘境', color: 'bg-gray-200', icon: 'Sprout' };
-                    return (
-                      <div key={cat} className="space-y-2">
-                        <div className="flex justify-between text-sm font-medium px-1 text-[#8B7355]">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${info.color}`}></div>
-                            <span>{info.label}</span>
-                          </div>
-                          <span>{percentage}% ({amount.toLocaleString()})</span>
+                    <header className="bg-white/80 backdrop-blur-md border-b border-[#E8DCC4] sticky top-0 z-20 px-6 py-5">
+                        <div className="max-w-2xl mx-auto flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-[#E9EDC9] p-2 rounded-2xl border border-[#CCD5AE]">
+                                    <Icon name="Sprout" className="text-[#4A6741]" size={24} />
+                                </div>
+                                <h1 className="text-xl font-bold tracking-tight text-[#4A6741]">森林記帳小筆記</h1>
+                            </div>
+                            <div className="flex gap-3">
+                                <button onClick={() => setIsSettingOpen(true)} className="bg-white border-2 border-[#E8DCC4] text-[#8B7355] p-2.5 rounded-2xl hover:bg-[#FDFBF7] transition-all">
+                                    <Icon name="Settings" size={20} />
+                                </button>
+                                <button onClick={() => setIsModalOpen(true)} className="bg-[#4A6741] text-white p-2.5 rounded-2xl shadow-lg hover:bg-[#3E5638] transition-all active:scale-95 shadow-[#4A6741]/20">
+                                    <Icon name="Plus" size={24} />
+                                </button>
+                            </div>
                         </div>
-                        <div className="w-full bg-[#F5F5DC] h-4 rounded-full overflow-hidden p-1 border border-[#E8DCC4]">
-                          <div className={`${info.color} h-full rounded-full transition-all duration-1000`} style={{ width: `${percentage}%` }}></div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-center text-[#A69076] py-16 italic font-medium">森林裡暫時沒有任何動靜 ✨</p>
-              )}
-            </div>
-          </section>
-        );
+                    </header>
 
-      case 'calendar':
-        return (
-          <section className="animate-in fade-in duration-700 space-y-6">
-            <div className="bg-white/80 backdrop-blur-sm rounded-[2.5rem] p-8 shadow-lg border border-[#E8DCC4]">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="font-bold text-[#5D4037] flex items-center gap-2">
-                  <Trees size={22} className="text-[#87CEEB]" /> 
-                  時光林徑
-                </h3>
-                <span className="text-xs font-bold bg-[#E9EDC9] text-[#4A6741] px-4 py-1.5 rounded-full border border-[#CCD5AE]">2026年 5月</span>
-              </div>
-              <div className="grid grid-cols-7 gap-3">
-                {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-                  <div key={d} className="text-center text-xs font-bold text-[#A69076]">{d}</div>
-                ))}
-                {Array.from({ length: 30 }, (_, i) => i + 1).map(d => {
-                  const dateStr = `2026-05-${d.toString().padStart(2, '0')}`;
-                  const hasData = transactions.some(t => t.date === dateStr);
-                  return (
-                    <div key={d} className={`aspect-square flex flex-col items-center justify-center rounded-2xl transition-all ${hasData ? 'bg-[#FEFAE0] border border-[#FAEDCD] cursor-pointer' : 'text-[#D1C4B0]'}`}>
-                      <span className={`text-sm font-bold ${hasData ? 'text-[#BC6C25]' : ''}`}>{d}</span>
-                      {hasData && <div className="w-1.5 h-1.5 bg-[#4A6741] rounded-full mt-1"></div>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="text-center">
-                <p className="text-xs font-medium text-[#A69076]">跟隨著森林的腳印，回顧每一天的生活</p>
-            </div>
-          </section>
-        );
+                    <main className="max-w-2xl mx-auto px-6 py-8">
+                        {activeTab === 'wallet' ? (
+                            <div className="animate-pop space-y-8">
+                                {/* 錢包卡片 */}
+                                <div className="relative overflow-hidden forest-gradient rounded-[3rem] p-10 text-white shadow-2xl border-4 border-[#F5F5DC]/20">
+                                    <div className="absolute top-4 right-8 opacity-20"><Icon name="Cloud" size={80} /></div>
+                                    <p className="text-[#E9EDC9] text-xs font-bold tracking-widest uppercase mb-2">My Forest Savings</p>
+                                    <h2 className="text-5xl font-bold flex items-baseline gap-2 mb-10">
+                                        <span className="text-2xl font-medium opacity-70">$</span>
+                                        {stats.balance.toLocaleString()}
+                                    </h2>
+                                    <div className="grid grid-cols-2 gap-6 relative z-10">
+                                        <div className="bg-white/10 backdrop-blur-md rounded-3xl p-5 border border-white/20">
+                                            <p className="text-[10px] font-bold text-[#E9EDC9] mb-1">新芽萌發 (收入)</p>
+                                            <p className="font-bold text-2xl tracking-tight">+ {stats.income.toLocaleString()}</p>
+                                        </div>
+                                        <div className="bg-black/10 backdrop-blur-md rounded-3xl p-5 border border-white/10">
+                                            <p className="text-[10px] font-bold text-[#CCD5AE] mb-1">落葉歸根 (支出)</p>
+                                            <p className="font-bold text-2xl tracking-tight">- {stats.expense.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </div>
 
-      default:
-        const filteredTransactions = transactions.filter(t => filterType === 'all' ? true : t.type === filterType);
-        return (
-          <div className="animate-in fade-in duration-700 space-y-8">
-            {/* 森林錢包卡片 */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#4A6741] via-[#5D7A52] to-[#3E5638] rounded-[3rem] p-10 text-white shadow-2xl border-4 border-[#F5F5DC]/20">
-              <div className="absolute top-4 right-8 opacity-20"><Cloud size={100} /></div>
-              <div className="absolute -bottom-6 -left-6 opacity-10"><Trees size={150} /></div>
-              
-              <p className="text-[#E9EDC9] text-xs font-bold tracking-widest uppercase mb-2">My Forest Savings</p>
-              <h2 className="text-5xl font-bold flex items-baseline gap-2 mb-10">
-                <span className="text-2xl font-medium opacity-70">$</span>
-                {stats.balance.toLocaleString()}
-              </h2>
-              <div className="grid grid-cols-2 gap-6 relative z-10">
-                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-5 border border-white/20">
-                  <div className="flex items-center gap-2 text-[#E9EDC9] mb-1.5"><TrendingUp size={16} /><span className="text-[10px] font-bold">新芽萌發 (收入)</span></div>
-                  <p className="font-bold text-2xl tracking-tight">+ {stats.income.toLocaleString()}</p>
-                </div>
-                <div className="bg-black/10 backdrop-blur-md rounded-3xl p-5 border border-white/10">
-                  <div className="flex items-center gap-2 text-[#CCD5AE] mb-1.5"><TrendingDown size={16} /><span className="text-[10px] font-bold">落葉歸根 (支出)</span></div>
-                  <p className="font-bold text-2xl tracking-tight">- {stats.expense.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 生活紀錄 */}
-            <section className="space-y-4">
-              <div className="flex justify-between items-center px-2">
-                <h3 className="font-bold text-xl text-[#5D4037] flex items-center gap-2">
-                  <List size={22} className="text-[#4A6741]" />
-                  生活紀錄
-                </h3>
-                <div className="flex bg-[#E8DCC4] p-1 rounded-2xl">
-                  {['all', 'expense', 'income'].map((type) => (
-                    <button key={type} onClick={() => setFilterType(type)} className={`px-4 py-2 rounded-[1rem] text-xs font-bold transition-all ${filterType === type ? 'bg-white text-[#4A6741] shadow-sm' : 'text-[#8B7355]'}`}>
-                      {type === 'all' ? '全部' : type === 'expense' ? '支出' : '收入'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-4 pb-12">
-                {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
-                  const info = categories[t.category] || INITIAL_CATEGORIES.income;
-                  return (
-                    <div key={t.id} className="bg-white/90 p-5 rounded-[2rem] flex items-center gap-5 shadow-md border border-[#E8DCC4] group hover:bg-[#FDFBF7] transition-all">
-                      <div className={`${info.color} p-4 rounded-[1.5rem] text-white shadow-sm flex-shrink-0`}>{renderIcon(info.icon, 26)}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          <span className="font-bold text-lg text-[#5D4037] truncate">{t.note || info.label}</span>
-                          <span className={`font-bold text-xl ${t.type === 'income' ? 'text-[#4A6741]' : 'text-[#BC6C25]'}`}>{t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-[11px] font-bold text-[#A69076] bg-[#F5F5DC] px-3 py-1 rounded-full">{t.date}</span>
-                          <button onClick={() => deleteTransaction(t.id)} className="text-[#D1C4B0] hover:text-[#BC6C25] transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <div className="text-center py-20 bg-white/40 border-2 border-dashed border-[#E8DCC4] rounded-[3rem] flex flex-col items-center gap-4">
-                    <Cloud className="text-[#D1C4B0]" size={48} />
-                    <p className="font-medium text-[#A69076]">今天也是寧靜的一天呢...</p>
-                  </div>
-                )}
-              </div>
-            </section>
-          </div>
-        );
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[#F9F6F0] text-[#5D4037] font-sans pb-32">
-      <div className="h-2 bg-gradient-to-r from-[#4A6741] via-[#87CEEB] to-[#D4A373]"></div>
-
-      <header className="bg-white/70 backdrop-blur-md border-b border-[#E8DCC4] sticky top-0 z-20 px-6 py-5">
-        <div className="max-w-2xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-[#E9EDC9] p-2.5 rounded-2xl border border-[#CCD5AE]"><Sprout className="text-[#4A6741]" size={26} /></div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#4A6741]">森林記帳小筆記</h1>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={() => setIsSettingOpen(true)} className="bg-white border-2 border-[#E8DCC4] text-[#8B7355] p-2.5 rounded-2xl hover:bg-[#FDFBF7] transition-all"><Settings size={22} /></button>
-            <button onClick={() => setIsModalOpen(true)} className="bg-[#4A6741] text-white p-2.5 rounded-2xl shadow-lg hover:bg-[#3E5638] transition-all active:scale-95 shadow-[#4A6741]/20"><Plus size={26} /></button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-6 py-8">
-        {renderContent()}
-      </main>
-
-      {/* 導覽列 */}
-      <div className="fixed bottom-10 left-0 right-0 px-6 z-30 pointer-events-none">
-        <nav className="max-w-xs mx-auto bg-white/90 backdrop-blur-xl border border-[#E8DCC4] p-2.5 rounded-[2.5rem] shadow-2xl flex justify-between items-center pointer-events-auto ring-12 ring-[#F9F6F0]/80">
-          <button onClick={() => setActiveTab('wallet')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'wallet' ? 'bg-[#4A6741] text-white shadow-lg' : 'text-[#A69076]'}`}><Wallet size={24} /></button>
-          <button onClick={() => setActiveTab('stats')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'stats' ? 'bg-[#87CEEB] text-white shadow-lg' : 'text-[#A69076]'}`}><PieChart size={24} /></button>
-          <button onClick={() => setActiveTab('calendar')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'calendar' ? 'bg-[#D4A373] text-white shadow-lg' : 'text-[#A69076]'}`}><Calendar size={24} /></button>
-        </nav>
-      </div>
-
-      {/* 記帳彈窗 */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#3E2723]/30 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
-          <div className="bg-[#FDFBF7] w-full max-w-lg rounded-t-[3.5rem] sm:rounded-[3.5rem] p-10 relative z-10 animate-in slide-in-from-bottom duration-500 border-t-8 border-[#4A6741] shadow-2xl">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-[#5D4037]">今日拾穗</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2.5 bg-[#F5F5DC] rounded-full text-[#A69076]"><X size={24} /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="flex p-1.5 bg-[#F5F5DC] rounded-[2.5rem] border border-[#E8DCC4]">
-                <button type="button" onClick={() => setFormData({...formData, type: 'expense'})} className={`flex-1 py-3 rounded-[2rem] font-bold transition-all ${formData.type === 'expense' ? 'bg-[#BC6C25] text-white shadow-md' : 'text-[#A69076]'}`}>落葉 (支出)</button>
-                <button type="button" onClick={() => setFormData({...formData, type: 'income'})} className={`flex-1 py-3 rounded-[2rem] font-bold transition-all ${formData.type === 'income' ? 'bg-[#4A6741] text-white shadow-md' : 'text-[#A69076]'}`}>新芽 (收入)</button>
-              </div>
-              
-              <div className="relative group">
-                <span className="absolute left-8 top-1/2 -translate-y-1/2 text-3xl font-bold text-[#D1C4B0] group-focus-within:text-[#4A6741] transition-colors">$</span>
-                <input type="number" required placeholder="0" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full bg-white border-4 border-[#F5F5DC] focus:border-[#E9EDC9] rounded-[2.5rem] py-6 pl-16 text-4xl font-bold text-[#5D4037] focus:outline-none transition-all placeholder:text-[#E8DCC4]" />
-              </div>
-
-              <div className="max-h-64 overflow-y-auto px-1 custom-scrollbar">
-                <div className="flex justify-between mb-3 px-3">
-                    <label className="text-xs font-bold text-[#A69076]">選擇分類 (長按以移除分類)</label>
-                    {isDeleteMode && <button type="button" onClick={() => setIsDeleteMode(false)} className="text-xs font-bold text-[#BC6C25] underline">完成</button>}
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  {Object.entries(categories).filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome).map(([key, info]) => (
-                    <div key={key} className="relative">
-                        <button
-                          type="button"
-                          onMouseDown={startPress} onMouseUp={endPress} onMouseLeave={endPress} onTouchStart={startPress} onTouchEnd={endPress}
-                          onClick={() => !isDeleteMode && setFormData({...formData, category: key})}
-                          className={`w-full flex flex-col items-center gap-3 p-4 rounded-[2rem] border-4 transition-all duration-300 ${formData.category === key ? 'border-[#4A6741] bg-[#E9EDC9] scale-105' : 'border-transparent bg-white shadow-sm'}`}
-                        >
-                          <div className={`${info.color} p-3 rounded-2xl text-white shadow-sm`}>{renderIcon(info.icon, 22)}</div>
-                          <span className="text-[11px] font-bold text-[#5D4037] truncate w-full text-center">{info.label}</span>
-                        </button>
-                        {isDeleteMode && key.startsWith('custom_') && (
-                            <button onClick={() => deleteCategory(key)} className="absolute -top-2 -right-2 bg-[#BC6C25] text-white rounded-full p-1.5 shadow-lg z-20 border-2 border-white"><X size={12} /></button>
+                                {/* 紀錄列表 */}
+                                <section className="space-y-4">
+                                    <div className="flex justify-between items-center px-2">
+                                        <h3 className="font-bold text-xl text-[#5D4037] flex items-center gap-2">
+                                            <Icon name="List" size={22} className="text-[#4A6741]" />
+                                            生活紀錄
+                                        </h3>
+                                        <div className="flex bg-[#E8DCC4] p-1 rounded-2xl text-xs">
+                                            {['all', 'expense', 'income'].map(type => (
+                                                <button key={type} onClick={() => setFilterType(type)} className={`px-4 py-2 rounded-xl font-bold transition-all ${filterType === type ? 'bg-white text-[#4A6741] shadow-sm' : 'text-[#8B7355]'}`}>
+                                                    {type === 'all' ? '全部' : type === 'expense' ? '支出' : '收入'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {transactions.filter(t => filterType === 'all' || t.type === filterType).length > 0 ? (
+                                            transactions.filter(t => filterType === 'all' || t.type === filterType).map(t => {
+                                                const info = categories[t.category] || INITIAL_CATEGORIES.food_daily;
+                                                return (
+                                                    <div key={t.id} className="bg-white p-5 rounded-[2rem] flex items-center gap-5 shadow-md border border-[#E8DCC4] group hover:bg-[#FDFBF7] transition-all">
+                                                        <div className={`${info.color} p-4 rounded-2xl text-white shadow-sm flex-shrink-0`}>
+                                                            <Icon name={info.icon} size={24} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex justify-between items-start">
+                                                                <span className="font-bold text-lg text-[#5D4037] truncate">{t.note || info.label}</span>
+                                                                <span className={`font-bold text-xl ${t.type === 'income' ? 'text-[#4A6741]' : 'text-[#BC6C25]'}`}>
+                                                                    {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center mt-2">
+                                                                <span className="text-[11px] font-bold text-[#A69076] bg-[#F5F5DC] px-3 py-1 rounded-full">{t.date}</span>
+                                                                <button onClick={() => deleteTransaction(t.id)} className="text-[#D1C4B0] hover:text-[#BC6C25] transition-all opacity-0 group-hover:opacity-100">
+                                                                    <Icon name="Trash2" size={18} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="text-center py-20 bg-white/40 border-2 border-dashed border-[#E8DCC4] rounded-[3rem] flex flex-col items-center gap-4">
+                                                <Icon name="Cloud" size={48} className="text-[#D1C4B0]" />
+                                                <p className="font-medium text-[#A69076]">森林裡暫時沒有新的腳印...</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </section>
+                            </div>
+                        ) : (
+                            <div className="animate-pop text-center py-20">
+                                <Icon name="Trees" size={64} className="text-[#4A6741] mb-4 opacity-50" />
+                                <p className="italic font-medium text-[#A69076]">森林分析與時光路徑正隨著微風趕來...</p>
+                                <p className="text-xs text-[#D1C4B0] mt-2">（此分頁功能正由森林精靈維護中）</p>
+                            </div>
                         )}
+                    </main>
+
+                    {/* 底部導覽列 */}
+                    <div className="fixed bottom-10 left-0 right-0 px-6 z-30">
+                        <nav className="max-w-xs mx-auto bg-white/90 backdrop-blur-xl border border-[#E8DCC4] p-2.5 rounded-[2.5rem] shadow-2xl flex justify-between items-center ring-8 ring-[#F9F6F0]/80">
+                            <button onClick={() => setActiveTab('wallet')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'wallet' ? 'bg-[#4A6741] text-white shadow-lg' : 'text-[#A69076]'}`}>
+                                <Icon name="Wallet" size={24} />
+                            </button>
+                            <button onClick={() => setActiveTab('stats')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'stats' ? 'bg-[#87CEEB] text-white shadow-lg' : 'text-[#A69076]'}`}>
+                                <Icon name="PieChart" size={24} />
+                            </button>
+                            <button onClick={() => setActiveTab('calendar')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'calendar' ? 'bg-[#D4A373] text-white shadow-lg' : 'text-[#A69076]'}`}>
+                                <Icon name="Calendar" size={24} />
+                            </button>
+                        </nav>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-5">
-                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-bold text-[#5D4037] focus:outline-none focus:border-[#E9EDC9]" />
-                <input type="text" placeholder="留個筆記..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-bold text-[#5D4037] focus:outline-none focus:border-[#E9EDC9]" />
-              </div>
-              <button type="submit" className={`w-full py-6 rounded-[2.5rem] font-bold text-2xl text-white shadow-xl transition-all active:scale-95 ${formData.type === 'income' ? 'bg-[#4A6741] hover:bg-[#3E5638]' : 'bg-[#BC6C25] hover:bg-[#A05D20]'}`}>寫入生活</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 分類管理 */}
-      {isSettingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#3E2723]/30 backdrop-blur-md" onClick={() => setIsSettingOpen(false)}></div>
-          <div className="bg-[#FDFBF7] w-full max-w-md rounded-[3.5rem] p-10 relative z-10 shadow-2xl border-b-8 border-[#D4A373] max-h-[85vh] flex flex-col">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-[#5D4037]">森林分類員</h2>
-              <button onClick={() => setIsSettingOpen(false)} className="p-2 hover:bg-[#F5F5DC] rounded-full transition-colors"><X size={26} /></button>
-            </div>
-            <div className="space-y-8 overflow-y-auto pr-2 custom-scrollbar">
-              <div className="bg-[#FEFAE0] p-8 rounded-[3rem] space-y-6 border border-[#FAEDCD]">
-                <div className="flex gap-4">
-                  <div className={`p-4 rounded-2xl text-white ${newCatData.color} shadow-lg`}>{renderIcon(newCatData.icon, 28)}</div>
-                  <input type="text" placeholder="新標籤名稱..." value={newCatData.label} onChange={e => setNewCatData({...newCatData, label: e.target.value})} className="flex-1 bg-white border-2 border-[#FAEDCD] rounded-[1.5rem] px-5 font-bold focus:outline-none focus:border-[#D4A373]" />
+                    {/* 彈出視窗：新增紀錄 */}
+                    {isModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-[#3E2723]/30 backdrop-blur-sm animate-fade-in" onClick={() => setIsModalOpen(false)}></div>
+                            <div className="bg-[#FDFBF7] w-full max-w-lg rounded-t-[3.5rem] sm:rounded-[3.5rem] p-10 relative z-10 animate-pop border-t-8 border-[#4A6741] shadow-2xl">
+                                <div className="flex justify-between items-center mb-8">
+                                    <h2 className="text-2xl font-bold text-[#5D4037]">今日拾穗</h2>
+                                    <button onClick={() => setIsModalOpen(false)} className="p-2.5 bg-[#F5F5DC] rounded-full text-[#A69076]"><Icon name="X" size={24} /></button>
+                                </div>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="flex p-1.5 bg-[#F5F5DC] rounded-[2.5rem] border border-[#E8DCC4]">
+                                        <button type="button" onClick={() => setFormData({...formData, type: 'expense'})} className={`flex-1 py-3 rounded-[2rem] font-bold transition-all ${formData.type === 'expense' ? 'bg-[#BC6C25] text-white shadow-md' : 'text-[#A69076]'}`}>落葉 (支出)</button>
+                                        <button type="button" onClick={() => setFormData({...formData, type: 'income'})} className={`flex-1 py-3 rounded-[2rem] font-bold transition-all ${formData.type === 'income' ? 'bg-[#4A6741] text-white shadow-md' : 'text-[#A69076]'}`}>新芽 (收入)</button>
+                                    </div>
+                                    <div className="relative">
+                                        <span className="absolute left-8 top-1/2 -translate-y-1/2 text-3xl font-bold text-[#D1C4B0] group-focus-within:text-[#4A6741]">$</span>
+                                        <input type="number" required placeholder="0" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full bg-white border-4 border-[#F5F5DC] focus:border-[#E9EDC9] rounded-[2.5rem] py-6 pl-16 text-4xl font-bold text-[#5D4037] focus:outline-none transition-all placeholder:text-[#E8DCC4]" />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                                        {Object.entries(categories).filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome).map(([key, info]) => (
+                                            <button key={key} type="button" onClick={() => setFormData({...formData, category: key})} className={`flex flex-col items-center gap-2 p-4 rounded-[2rem] border-4 transition-all ${formData.category === key ? 'border-[#4A6741] bg-[#E9EDC9] scale-105' : 'border-transparent bg-white shadow-sm'}`}>
+                                                <div className={`${info.color} p-2.5 rounded-xl text-white`}><Icon name={info.icon} size={20} /></div>
+                                                <span className="text-[10px] font-bold truncate w-full text-center">{info.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-bold text-sm text-[#5D4037] focus:outline-none focus:border-[#E9EDC9]" />
+                                        <input type="text" placeholder="留個筆記..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-bold text-sm text-[#5D4037] focus:outline-none focus:border-[#E9EDC9]" />
+                                    </div>
+                                    <button type="submit" className={`w-full py-5 rounded-[2.5rem] font-bold text-xl text-white shadow-xl transition-all active:scale-95 ${formData.type === 'income' ? 'bg-[#4A6741]' : 'bg-[#BC6C25]'}`}>寫入生活紀錄</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
                 </div>
-                <div className="grid grid-cols-6 gap-3">
-                  {Object.keys(ICON_OPTIONS).map(icon => (
-                    <button key={icon} onClick={() => setNewCatData({...newCatData, icon: icon})} className={`p-2 rounded-xl transition-all ${newCatData.icon === icon ? 'bg-[#4A6741] text-white shadow-md' : 'bg-white text-[#D1C4B0]'}`}>{renderIcon(icon, 20)}</button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {COLOR_OPTIONS.map(color => (
-                    <button key={color} onClick={() => setNewCatData({...newCatData, color: color})} className={`h-10 rounded-xl transition-all ${color} ${newCatData.color === color ? 'ring-4 ring-[#E9EDC9] ring-offset-2' : 'border border-black/5'}`}></button>
-                  ))}
-                </div>
-                <button onClick={handleAddCategory} className="w-full py-4 bg-[#4A6741] text-white rounded-[2rem] font-bold text-lg hover:bg-[#3E5638] transition-all active:scale-95 shadow-lg shadow-[#4A6741]/20">栽培新分類</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            );
+        }
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E8DCC4; border-radius: 20px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      `}} />
-    </div>
-  );
-};
-
-export default App;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
