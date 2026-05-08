@@ -25,44 +25,52 @@ import {
   IceCream,
   Bus,
   Sparkles,
-  ChevronLeft,
-  ChevronRight
+  Sprout,
+  Trees,
+  Cloud,
+  Navigation,
+  Wind,
+  Stars,
+  Flower
 } from 'lucide-react';
 
-// 可選圖標池
+// 吉卜力風格可選圖標池
 const ICON_OPTIONS = {
-  Utensils, Car, ShoppingBag, Home, Coffee, CheckCircle2, Heart, 
-  Gamepad2, Gift, Briefcase, Smartphone, Pizza, IceCream, Bus, Sparkles
+  Utensils, Car, ShoppingBag, Home, Coffee, Sprout, Heart, 
+  Gamepad2, Gift, Briefcase, Smartphone, Pizza, Trees, Bus, Cloud, Navigation, Wind, Flower
 };
 
-// 預設馬卡龍配色
+// 森林自然配色
 const COLOR_OPTIONS = [
-  'bg-rose-400', 'bg-orange-400', 'bg-amber-400', 'bg-emerald-400', 
-  'bg-sky-400', 'bg-indigo-400', 'bg-purple-400', 'bg-pink-400'
+  'bg-[#4A6741]', // 森林綠
+  'bg-[#87CEEB]', // 天空藍
+  'bg-[#D4A373]', // 橡木棕
+  'bg-[#E9EDC9]', // 草地綠
+  'bg-[#FEFAE0]', // 奶油黃
+  'bg-[#FAEDCD]', // 羊皮紙
+  'bg-[#CCD5AE]', // 嫩葉色
+  'bg-[#BC6C25]'  // 落葉褐
 ];
 
 const INITIAL_CATEGORIES = {
-  'food_brunch': { label: '早午餐', icon: 'Utensils', color: 'bg-orange-400' },
-  'food_dinner': { label: '晚餐', icon: 'Pizza', color: 'bg-amber-500' },
-  'food_snack': { label: '零食甜點', icon: 'IceCream', color: 'bg-rose-300' },
-  'transport_bus': { label: '大眾運輸', icon: 'Bus', color: 'bg-sky-400' },
-  'transport_taxi': { label: '計程車', icon: 'Car', color: 'bg-blue-400' },
-  'shopping': { label: '購物開箱', icon: 'ShoppingBag', color: 'bg-pink-400' },
-  'entertainment': { label: '娛樂放鬆', icon: 'Gamepad2', color: 'bg-purple-400' },
-  'home': { label: '居家生活', icon: 'Home', color: 'bg-indigo-400' },
-  'income': { label: '薪水獎金', icon: 'TrendingUp', color: 'bg-emerald-400', isIncome: true }
+  'food_morning': { label: '晨之餐', icon: 'Coffee', color: 'bg-[#D4A373]' },
+  'food_daily': { label: '日常食', icon: 'Utensils', color: 'bg-[#4A6741]' },
+  'transport': { label: '旅途上', icon: 'Bus', color: 'bg-[#87CEEB]' },
+  'shopping': { label: '生活物', icon: 'ShoppingBag', color: 'bg-[#BC6C25]' },
+  'entertainment': { label: '閒暇時', icon: 'Gamepad2', color: 'bg-[#CCD5AE]' },
+  'home': { label: '避風港', icon: 'Home', color: 'bg-[#FAEDCD] text-gray-700' },
+  'income': { label: '勤勉獲', icon: 'Sprout', color: 'bg-[#4A6741]', isIncome: true }
 };
 
 const App = () => {
-  // 狀態管理
-  const [activeTab, setActiveTab] = useState('wallet'); // wallet, stats, calendar
+  const [activeTab, setActiveTab] = useState('wallet');
   const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('anime_accounting_data');
+    const saved = localStorage.getItem('ghibli_accounting_data');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [categories, setCategories] = useState(() => {
-    const saved = localStorage.getItem('anime_categories');
+    const saved = localStorage.getItem('ghibli_categories');
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
   });
   
@@ -74,32 +82,27 @@ const App = () => {
   const [formData, setFormData] = useState({
     type: 'expense',
     amount: '',
-    category: 'food_brunch',
+    category: 'food_morning',
     note: '',
     date: new Date().toISOString().split('T')[0]
   });
 
   const [newCatData, setNewCatData] = useState({
     label: '',
-    icon: 'Heart',
-    color: 'bg-rose-400'
+    icon: 'Sprout',
+    color: 'bg-[#4A6741]'
   });
 
-  // 長按計時器
   const longPressTimer = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem('anime_accounting_data', JSON.stringify(transactions));
-    localStorage.setItem('anime_categories', JSON.stringify(categories));
+    localStorage.setItem('ghibli_accounting_data', JSON.stringify(transactions));
+    localStorage.setItem('ghibli_categories', JSON.stringify(categories));
   }, [transactions, categories]);
 
   const stats = useMemo(() => {
-    const income = transactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    const expense = transactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+    const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
     return { income, expense, balance: income - expense };
   }, [transactions]);
 
@@ -115,13 +118,7 @@ const App = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.amount || formData.amount <= 0) return;
-
-    const newTransaction = {
-      ...formData,
-      id: Date.now(),
-      amount: Number(formData.amount)
-    };
-
+    const newTransaction = { ...formData, id: Date.now(), amount: Number(formData.amount) };
     setTransactions([newTransaction, ...transactions]);
     setIsModalOpen(false);
     resetForm();
@@ -131,7 +128,7 @@ const App = () => {
     setFormData({
       type: 'expense',
       amount: '',
-      category: Object.keys(categories).find(k => !categories[k].isIncome) || 'food_brunch',
+      category: Object.keys(categories).find(k => !categories[k].isIncome) || 'food_morning',
       note: '',
       date: new Date().toISOString().split('T')[0]
     });
@@ -142,104 +139,92 @@ const App = () => {
     if (!newCatData.label) return;
     const key = `custom_${Date.now()}`;
     setCategories({ ...categories, [key]: { ...newCatData } });
-    setNewCatData({ label: '', icon: 'Heart', color: 'bg-rose-400' });
+    setNewCatData({ label: '', icon: 'Sprout', color: 'bg-[#4A6741]' });
   };
 
-  const deleteTransaction = (id) => {
-    setTransactions(transactions.filter(t => t.id !== id));
-  };
-
+  const deleteTransaction = (id) => setTransactions(transactions.filter(t => t.id !== id));
+  
   const deleteCategory = (key) => {
     const newCats = { ...categories };
     delete newCats[key];
     setCategories(newCats);
-    if (formData.category === key) {
-        setFormData({...formData, category: Object.keys(newCats)[0]});
-    }
   };
 
-  // 長按邏輯
-  const startPress = () => {
-    longPressTimer.current = setTimeout(() => setIsDeleteMode(true), 600);
-  };
-  const endPress = () => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-  };
+  const startPress = () => longPressTimer.current = setTimeout(() => setIsDeleteMode(true), 600);
+  const endPress = () => longPressTimer.current && clearTimeout(longPressTimer.current);
 
   const renderIcon = (iconName, size = 20) => {
     const IconComp = ICON_OPTIONS[iconName] || Heart;
     return <IconComp size={size} />;
   };
 
-  // 渲染分頁內容
   const renderContent = () => {
     switch (activeTab) {
       case 'stats':
         return (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-            <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-pink-50/50 border border-pink-50">
-              <h3 className="font-black text-slate-600 mb-6 flex items-center gap-2">
-                <PieChart size={20} className="text-purple-400" /> 
-                魔法支出分析
+          <section className="animate-in fade-in duration-700 space-y-6">
+            <div className="bg-white/80 backdrop-blur-sm rounded-[2.5rem] p-8 shadow-lg border border-[#E8DCC4]">
+              <h3 className="font-bold text-[#5D4037] mb-8 flex items-center gap-2">
+                <Wind size={22} className="text-[#4A6741]" /> 
+                風的低語（支出分析）
               </h3>
               {categoryStats.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {categoryStats.map(([cat, amount]) => {
                     const percentage = ((amount / stats.expense) * 100).toFixed(1);
-                    const info = categories[cat] || { label: '未知', color: 'bg-gray-400', icon: 'Heart' };
+                    const info = categories[cat] || { label: '秘境', color: 'bg-gray-200', icon: 'Sprout' };
                     return (
                       <div key={cat} className="space-y-2">
-                        <div className="flex justify-between text-xs font-bold px-1">
+                        <div className="flex justify-between text-sm font-medium px-1 text-[#8B7355]">
                           <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${info.color}`}></div>
-                            <span className="text-slate-500">{info.label}</span>
+                            <div className={`w-3 h-3 rounded-full ${info.color}`}></div>
+                            <span>{info.label}</span>
                           </div>
-                          <span className="text-slate-400">{percentage}% (${amount.toLocaleString()})</span>
+                          <span>{percentage}% ({amount.toLocaleString()})</span>
                         </div>
-                        <div className="w-full bg-slate-50 h-3 rounded-full overflow-hidden p-0.5 border border-pink-50">
-                          <div className={`${info.color} h-full rounded-full transition-all duration-1000 shadow-sm`} style={{ width: `${percentage}%` }}></div>
+                        <div className="w-full bg-[#F5F5DC] h-4 rounded-full overflow-hidden p-1 border border-[#E8DCC4]">
+                          <div className={`${info.color} h-full rounded-full transition-all duration-1000`} style={{ width: `${percentage}%` }}></div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-center text-slate-300 py-10 italic">目前還沒有支出數據可以分析喔 ✨</p>
+                <p className="text-center text-[#A69076] py-16 italic font-medium">森林裡暫時沒有任何動靜 ✨</p>
               )}
             </div>
           </section>
         );
 
       case 'calendar':
-        const daysInMonth = Array.from({ length: 30 }, (_, i) => i + 1);
         return (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-            <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-pink-50/50 border border-pink-50">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-black text-slate-600 flex items-center gap-2">
-                  <Calendar size={20} className="text-sky-400" /> 
-                  冒險月曆
+          <section className="animate-in fade-in duration-700 space-y-6">
+            <div className="bg-white/80 backdrop-blur-sm rounded-[2.5rem] p-8 shadow-lg border border-[#E8DCC4]">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="font-bold text-[#5D4037] flex items-center gap-2">
+                  <Trees size={22} className="text-[#87CEEB]" /> 
+                  時光林徑
                 </h3>
-                <span className="text-xs font-black bg-sky-50 text-sky-400 px-3 py-1 rounded-full">2026年 5月</span>
+                <span className="text-xs font-bold bg-[#E9EDC9] text-[#4A6741] px-4 py-1.5 rounded-full border border-[#CCD5AE]">2026年 5月</span>
               </div>
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-7 gap-3">
                 {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-                  <div key={d} className="text-center text-[10px] font-black text-slate-300">{d}</div>
+                  <div key={d} className="text-center text-xs font-bold text-[#A69076]">{d}</div>
                 ))}
-                {daysInMonth.map(d => {
+                {Array.from({ length: 30 }, (_, i) => i + 1).map(d => {
                   const dateStr = `2026-05-${d.toString().padStart(2, '0')}`;
                   const hasData = transactions.some(t => t.date === dateStr);
                   return (
-                    <div key={d} className={`aspect-square flex flex-col items-center justify-center rounded-xl transition-all ${hasData ? 'bg-pink-50 cursor-pointer active:scale-90' : 'text-slate-300'}`}>
-                      <span className={`text-xs font-bold ${hasData ? 'text-pink-500' : ''}`}>{d}</span>
-                      {hasData && <div className="w-1 h-1 bg-pink-400 rounded-full mt-0.5 animate-pulse"></div>}
+                    <div key={d} className={`aspect-square flex flex-col items-center justify-center rounded-2xl transition-all ${hasData ? 'bg-[#FEFAE0] border border-[#FAEDCD] cursor-pointer' : 'text-[#D1C4B0]'}`}>
+                      <span className={`text-sm font-bold ${hasData ? 'text-[#BC6C25]' : ''}`}>{d}</span>
+                      {hasData && <div className="w-1.5 h-1.5 bg-[#4A6741] rounded-full mt-1"></div>}
                     </div>
                   );
                 })}
               </div>
             </div>
-            <div className="bg-sky-50/50 p-6 rounded-[2rem] border-2 border-dashed border-sky-100 text-center">
-                <p className="text-xs font-bold text-sky-400">點擊有魔法標註的日期來查看詳細紀錄</p>
+            <div className="text-center">
+                <p className="text-xs font-medium text-[#A69076]">跟隨著森林的腳印，回顧每一天的生活</p>
             </div>
           </section>
         );
@@ -247,59 +232,66 @@ const App = () => {
       default:
         const filteredTransactions = transactions.filter(t => filterType === 'all' ? true : t.type === filterType);
         return (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-            {/* 資產卡片 */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-pink-400 via-rose-400 to-purple-500 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-pink-200 group">
-              <p className="text-pink-50 text-sm font-bold tracking-widest uppercase opacity-80">My Wallet Balance</p>
-              <h2 className="text-4xl font-black mt-2 mb-8 flex items-center gap-2">
-                <span className="text-2xl opacity-60">$</span>
+          <div className="animate-in fade-in duration-700 space-y-8">
+            {/* 森林錢包卡片 */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#4A6741] via-[#5D7A52] to-[#3E5638] rounded-[3rem] p-10 text-white shadow-2xl border-4 border-[#F5F5DC]/20">
+              <div className="absolute top-4 right-8 opacity-20"><Cloud size={100} /></div>
+              <div className="absolute -bottom-6 -left-6 opacity-10"><Trees size={150} /></div>
+              
+              <p className="text-[#E9EDC9] text-xs font-bold tracking-widest uppercase mb-2">My Forest Savings</p>
+              <h2 className="text-5xl font-bold flex items-baseline gap-2 mb-10">
+                <span className="text-2xl font-medium opacity-70">$</span>
                 {stats.balance.toLocaleString()}
               </h2>
-              <div className="grid grid-cols-2 gap-4 relative z-10">
-                <div className="bg-white/20 backdrop-blur-md rounded-3xl p-4 border border-white/30">
-                  <div className="flex items-center gap-2 text-pink-50 mb-1"><TrendingUp size={14} /><span className="text-xs font-bold">總收入</span></div>
-                  <p className="font-black text-xl">+ {stats.income.toLocaleString()}</p>
+              <div className="grid grid-cols-2 gap-6 relative z-10">
+                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-5 border border-white/20">
+                  <div className="flex items-center gap-2 text-[#E9EDC9] mb-1.5"><TrendingUp size={16} /><span className="text-[10px] font-bold">新芽萌發 (收入)</span></div>
+                  <p className="font-bold text-2xl tracking-tight">+ {stats.income.toLocaleString()}</p>
                 </div>
-                <div className="bg-black/10 backdrop-blur-md rounded-3xl p-4 border border-white/10">
-                  <div className="flex items-center gap-2 text-pink-100 mb-1"><TrendingDown size={14} /><span className="text-xs font-bold">總支出</span></div>
-                  <p className="font-black text-xl">- {stats.expense.toLocaleString()}</p>
+                <div className="bg-black/10 backdrop-blur-md rounded-3xl p-5 border border-white/10">
+                  <div className="flex items-center gap-2 text-[#CCD5AE] mb-1.5"><TrendingDown size={16} /><span className="text-[10px] font-bold">落葉歸根 (支出)</span></div>
+                  <p className="font-bold text-2xl tracking-tight">- {stats.expense.toLocaleString()}</p>
                 </div>
               </div>
             </div>
 
-            {/* 紀錄列表 */}
+            {/* 生活紀錄 */}
             <section className="space-y-4">
               <div className="flex justify-between items-center px-2">
-                <h3 className="font-black text-lg text-slate-700 flex items-center gap-2"><List size={20} className="text-pink-400" />冒險日誌</h3>
-                <div className="flex bg-pink-50 p-1.5 rounded-2xl border border-pink-100">
+                <h3 className="font-bold text-xl text-[#5D4037] flex items-center gap-2">
+                  <List size={22} className="text-[#4A6741]" />
+                  生活紀錄
+                </h3>
+                <div className="flex bg-[#E8DCC4] p-1 rounded-2xl">
                   {['all', 'expense', 'income'].map((type) => (
-                    <button key={type} onClick={() => setFilterType(type)} className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${filterType === type ? 'bg-white text-pink-500 shadow-sm' : 'text-pink-300'}`}>
+                    <button key={type} onClick={() => setFilterType(type)} className={`px-4 py-2 rounded-[1rem] text-xs font-bold transition-all ${filterType === type ? 'bg-white text-[#4A6741] shadow-sm' : 'text-[#8B7355]'}`}>
                       {type === 'all' ? '全部' : type === 'expense' ? '支出' : '收入'}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="space-y-3 pb-10">
+              <div className="space-y-4 pb-12">
                 {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
                   const info = categories[t.category] || INITIAL_CATEGORIES.income;
                   return (
-                    <div key={t.id} className="bg-white p-4 rounded-[1.5rem] flex items-center gap-4 shadow-sm border border-pink-50/50 hover:border-pink-200 transition-all group active:scale-98">
-                      <div className={`${info.color} p-4 rounded-2xl text-white shadow-lg flex-shrink-0`}>{renderIcon(info.icon, 24)}</div>
+                    <div key={t.id} className="bg-white/90 p-5 rounded-[2rem] flex items-center gap-5 shadow-md border border-[#E8DCC4] group hover:bg-[#FDFBF7] transition-all">
+                      <div className={`${info.color} p-4 rounded-[1.5rem] text-white shadow-sm flex-shrink-0`}>{renderIcon(info.icon, 26)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                          <span className="font-black text-slate-700 truncate">{t.note || info.label}</span>
-                          <span className={`font-black text-lg ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>{t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}</span>
+                          <span className="font-bold text-lg text-[#5D4037] truncate">{t.note || info.label}</span>
+                          <span className={`font-bold text-xl ${t.type === 'income' ? 'text-[#4A6741]' : 'text-[#BC6C25]'}`}>{t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center mt-1">
-                          <span className="text-[10px] font-bold text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full">{t.date}</span>
-                          <button onClick={() => deleteTransaction(t.id)} className="text-slate-200 hover:text-rose-400 transition-all opacity-0 group-hover:opacity-100 p-1"><Trash2 size={16} /></button>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-[11px] font-bold text-[#A69076] bg-[#F5F5DC] px-3 py-1 rounded-full">{t.date}</span>
+                          <button onClick={() => deleteTransaction(t.id)} className="text-[#D1C4B0] hover:text-[#BC6C25] transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
                         </div>
                       </div>
                     </div>
                   );
                 }) : (
-                  <div className="text-center py-16 bg-white/40 border-4 border-dashed border-pink-100 rounded-[2.5rem] flex flex-col items-center gap-4">
-                    <p className="font-bold text-pink-300">目前還沒有冒險紀錄喔！</p>
+                  <div className="text-center py-20 bg-white/40 border-2 border-dashed border-[#E8DCC4] rounded-[3rem] flex flex-col items-center gap-4">
+                    <Cloud className="text-[#D1C4B0]" size={48} />
+                    <p className="font-medium text-[#A69076]">今天也是寧靜的一天呢...</p>
                   </div>
                 )}
               </div>
@@ -310,132 +302,116 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF5F7] text-slate-700 font-sans pb-32">
-      <div className="h-2 bg-gradient-to-r from-pink-300 via-purple-300 to-sky-300"></div>
+    <div className="min-h-screen bg-[#F9F6F0] text-[#5D4037] font-sans pb-32">
+      <div className="h-2 bg-gradient-to-r from-[#4A6741] via-[#87CEEB] to-[#D4A373]"></div>
 
-      <header className="bg-white/80 backdrop-blur-md border-b border-pink-100 sticky top-0 z-20 px-4 py-4">
+      <header className="bg-white/70 backdrop-blur-md border-b border-[#E8DCC4] sticky top-0 z-20 px-6 py-5">
         <div className="max-w-2xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="bg-pink-100 p-2 rounded-2xl"><Sparkles className="text-pink-500" size={24} /></div>
-            <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500">夢幻記帳精靈</h1>
+          <div className="flex items-center gap-3">
+            <div className="bg-[#E9EDC9] p-2.5 rounded-2xl border border-[#CCD5AE]"><Sprout className="text-[#4A6741]" size={26} /></div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#4A6741]">森林記帳小筆記</h1>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => setIsSettingOpen(true)} className="bg-white border-2 border-pink-100 text-pink-400 p-2 rounded-2xl hover:bg-pink-50 transition-all active:scale-90"><Settings size={20} /></button>
-            <button onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-pink-400 to-rose-400 text-white p-2 rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-95"><Plus size={24} /></button>
+          <div className="flex gap-3">
+            <button onClick={() => setIsSettingOpen(true)} className="bg-white border-2 border-[#E8DCC4] text-[#8B7355] p-2.5 rounded-2xl hover:bg-[#FDFBF7] transition-all"><Settings size={22} /></button>
+            <button onClick={() => setIsModalOpen(true)} className="bg-[#4A6741] text-white p-2.5 rounded-2xl shadow-lg hover:bg-[#3E5638] transition-all active:scale-95 shadow-[#4A6741]/20"><Plus size={26} /></button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-2xl mx-auto px-6 py-8">
         {renderContent()}
       </main>
 
-      {/* 底部導覽列 */}
-      <div className="fixed bottom-8 left-0 right-0 px-4 z-30 pointer-events-none">
-        <nav className="max-w-xs mx-auto bg-white/90 backdrop-blur-xl border border-pink-100 px-2 py-2 rounded-[2.5rem] shadow-2xl flex justify-between items-center pointer-events-auto ring-8 ring-pink-50/50">
-          <button 
-            onClick={() => setActiveTab('wallet')}
-            className={`flex-1 flex justify-center py-3 rounded-[2rem] transition-all duration-300 ${activeTab === 'wallet' ? 'bg-pink-100 text-pink-600 scale-105 shadow-inner' : 'text-slate-300 hover:text-pink-300'}`}
-          >
-            <Wallet size={24} strokeWidth={activeTab === 'wallet' ? 3 : 2} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('stats')}
-            className={`flex-1 flex justify-center py-3 rounded-[2rem] transition-all duration-300 ${activeTab === 'stats' ? 'bg-purple-100 text-purple-600 scale-105 shadow-inner' : 'text-slate-300 hover:text-purple-300'}`}
-          >
-            <PieChart size={24} strokeWidth={activeTab === 'stats' ? 3 : 2} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('calendar')}
-            className={`flex-1 flex justify-center py-3 rounded-[2rem] transition-all duration-300 ${activeTab === 'calendar' ? 'bg-sky-100 text-sky-600 scale-105 shadow-inner' : 'text-slate-300 hover:text-sky-300'}`}
-          >
-            <Calendar size={24} strokeWidth={activeTab === 'calendar' ? 3 : 2} />
-          </button>
+      {/* 導覽列 */}
+      <div className="fixed bottom-10 left-0 right-0 px-6 z-30 pointer-events-none">
+        <nav className="max-w-xs mx-auto bg-white/90 backdrop-blur-xl border border-[#E8DCC4] p-2.5 rounded-[2.5rem] shadow-2xl flex justify-between items-center pointer-events-auto ring-12 ring-[#F9F6F0]/80">
+          <button onClick={() => setActiveTab('wallet')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'wallet' ? 'bg-[#4A6741] text-white shadow-lg' : 'text-[#A69076]'}`}><Wallet size={24} /></button>
+          <button onClick={() => setActiveTab('stats')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'stats' ? 'bg-[#87CEEB] text-white shadow-lg' : 'text-[#A69076]'}`}><PieChart size={24} /></button>
+          <button onClick={() => setActiveTab('calendar')} className={`flex-1 flex justify-center py-3.5 rounded-[2rem] transition-all ${activeTab === 'calendar' ? 'bg-[#D4A373] text-white shadow-lg' : 'text-[#A69076]'}`}><Calendar size={24} /></button>
         </nav>
       </div>
 
-      {/* 新增記帳 Modal */}
+      {/* 記帳彈窗 */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="absolute inset-0 bg-pink-900/20 backdrop-blur-md" onClick={() => setIsModalOpen(false)}></div>
-          <div className="bg-white w-full max-w-lg rounded-t-[3rem] sm:rounded-[3rem] p-8 relative z-10 animate-in slide-in-from-bottom duration-500 border-t-8 border-pink-300 shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-slate-700">記下一筆寶藏</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 bg-pink-50 rounded-full text-pink-400"><X size={24} /></button>
+          <div className="absolute inset-0 bg-[#3E2723]/30 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
+          <div className="bg-[#FDFBF7] w-full max-w-lg rounded-t-[3.5rem] sm:rounded-[3.5rem] p-10 relative z-10 animate-in slide-in-from-bottom duration-500 border-t-8 border-[#4A6741] shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-bold text-[#5D4037]">今日拾穗</h2>
+              <button onClick={() => setIsModalOpen(false)} className="p-2.5 bg-[#F5F5DC] rounded-full text-[#A69076]"><X size={24} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex p-1 bg-pink-50 rounded-[2rem]">
-                <button type="button" onClick={() => setFormData({...formData, type: 'expense'})} className={`flex-1 py-2 rounded-[1.8rem] font-black transition-all ${formData.type === 'expense' ? 'bg-rose-400 text-white shadow-lg' : 'text-pink-300'}`}>支出</button>
-                <button type="button" onClick={() => setFormData({...formData, type: 'income'})} className={`flex-1 py-2 rounded-[1.8rem] font-black transition-all ${formData.type === 'income' ? 'bg-emerald-400 text-white shadow-lg' : 'text-pink-300'}`}>收入</button>
-              </div>
-              <div className="relative">
-                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-pink-200">$</span>
-                <input type="number" required placeholder="0" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full bg-pink-50/50 border-4 border-transparent focus:border-pink-100 rounded-[2rem] py-5 pl-12 text-3xl font-black text-slate-700 focus:outline-none transition-all" />
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="flex p-1.5 bg-[#F5F5DC] rounded-[2.5rem] border border-[#E8DCC4]">
+                <button type="button" onClick={() => setFormData({...formData, type: 'expense'})} className={`flex-1 py-3 rounded-[2rem] font-bold transition-all ${formData.type === 'expense' ? 'bg-[#BC6C25] text-white shadow-md' : 'text-[#A69076]'}`}>落葉 (支出)</button>
+                <button type="button" onClick={() => setFormData({...formData, type: 'income'})} className={`flex-1 py-3 rounded-[2rem] font-bold transition-all ${formData.type === 'income' ? 'bg-[#4A6741] text-white shadow-md' : 'text-[#A69076]'}`}>新芽 (收入)</button>
               </div>
               
-              <div className="max-h-56 overflow-y-auto px-1 custom-scrollbar">
-                <div className="flex justify-between mb-2 px-2">
-                    <label className="text-[10px] font-black text-slate-400">選擇分類 (長按刪除)</label>
-                    {isDeleteMode && <button type="button" onClick={() => setIsDeleteMode(false)} className="text-[10px] font-black text-pink-500 underline">完成</button>}
+              <div className="relative group">
+                <span className="absolute left-8 top-1/2 -translate-y-1/2 text-3xl font-bold text-[#D1C4B0] group-focus-within:text-[#4A6741] transition-colors">$</span>
+                <input type="number" required placeholder="0" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full bg-white border-4 border-[#F5F5DC] focus:border-[#E9EDC9] rounded-[2.5rem] py-6 pl-16 text-4xl font-bold text-[#5D4037] focus:outline-none transition-all placeholder:text-[#E8DCC4]" />
+              </div>
+
+              <div className="max-h-64 overflow-y-auto px-1 custom-scrollbar">
+                <div className="flex justify-between mb-3 px-3">
+                    <label className="text-xs font-bold text-[#A69076]">選擇分類 (長按以移除分類)</label>
+                    {isDeleteMode && <button type="button" onClick={() => setIsDeleteMode(false)} className="text-xs font-bold text-[#BC6C25] underline">完成</button>}
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(categories)
-                    .filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome)
-                    .map(([key, info]) => (
+                <div className="grid grid-cols-3 gap-4">
+                  {Object.entries(categories).filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome).map(([key, info]) => (
                     <div key={key} className="relative">
                         <button
                           type="button"
                           onMouseDown={startPress} onMouseUp={endPress} onMouseLeave={endPress} onTouchStart={startPress} onTouchEnd={endPress}
                           onClick={() => !isDeleteMode && setFormData({...formData, category: key})}
-                          className={`w-full flex flex-col items-center gap-2 p-3 rounded-[1.5rem] border-4 transition-all duration-300 ${formData.category === key ? 'border-pink-300 bg-pink-50 text-pink-600 scale-105' : 'border-transparent bg-slate-50 text-slate-300'} ${isDeleteMode && key.startsWith('custom_') ? 'animate-bounce' : ''}`}
+                          className={`w-full flex flex-col items-center gap-3 p-4 rounded-[2rem] border-4 transition-all duration-300 ${formData.category === key ? 'border-[#4A6741] bg-[#E9EDC9] scale-105' : 'border-transparent bg-white shadow-sm'}`}
                         >
-                          <div className={`${info.color} p-2 rounded-xl text-white`}>{renderIcon(info.icon, 20)}</div>
-                          <span className="text-[10px] font-black truncate w-full text-center">{info.label}</span>
+                          <div className={`${info.color} p-3 rounded-2xl text-white shadow-sm`}>{renderIcon(info.icon, 22)}</div>
+                          <span className="text-[11px] font-bold text-[#5D4037] truncate w-full text-center">{info.label}</span>
                         </button>
                         {isDeleteMode && key.startsWith('custom_') && (
-                            <button onClick={() => deleteCategory(key)} className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-1 shadow-lg z-20"><X size={10} /></button>
+                            <button onClick={() => deleteCategory(key)} className="absolute -top-2 -right-2 bg-[#BC6C25] text-white rounded-full p-1.5 shadow-lg z-20 border-2 border-white"><X size={12} /></button>
                         )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-slate-50 border-none rounded-2xl p-4 font-bold text-slate-600 focus:ring-2 focus:ring-pink-100" />
-                <input type="text" placeholder="備註..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="bg-slate-50 border-none rounded-2xl p-4 font-bold text-slate-600 focus:ring-2 focus:ring-pink-100" />
+              <div className="grid grid-cols-2 gap-5">
+                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-bold text-[#5D4037] focus:outline-none focus:border-[#E9EDC9]" />
+                <input type="text" placeholder="留個筆記..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="bg-white border-2 border-[#F5F5DC] rounded-2xl p-4 font-bold text-[#5D4037] focus:outline-none focus:border-[#E9EDC9]" />
               </div>
-              <button type="submit" className={`w-full py-5 rounded-[2rem] font-black text-xl text-white shadow-2xl transition-all active:scale-95 ${formData.type === 'income' ? 'bg-gradient-to-r from-emerald-400 to-teal-400 shadow-emerald-100' : 'bg-gradient-to-r from-pink-400 to-rose-400 shadow-pink-100'}`}>確認記帳！</button>
+              <button type="submit" className={`w-full py-6 rounded-[2.5rem] font-bold text-2xl text-white shadow-xl transition-all active:scale-95 ${formData.type === 'income' ? 'bg-[#4A6741] hover:bg-[#3E5638]' : 'bg-[#BC6C25] hover:bg-[#A05D20]'}`}>寫入生活</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* 分類管理 Modal */}
+      {/* 分類管理 */}
       {isSettingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-purple-900/20 backdrop-blur-md" onClick={() => setIsSettingOpen(false)}></div>
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 relative z-10 shadow-2xl border-b-8 border-purple-300 max-h-[80vh] flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-slate-700">分類管理</h2>
-              <button onClick={() => setIsSettingOpen(false)} className="p-2 hover:bg-slate-100 rounded-full"><X size={24} /></button>
+          <div className="absolute inset-0 bg-[#3E2723]/30 backdrop-blur-md" onClick={() => setIsSettingOpen(false)}></div>
+          <div className="bg-[#FDFBF7] w-full max-w-md rounded-[3.5rem] p-10 relative z-10 shadow-2xl border-b-8 border-[#D4A373] max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-bold text-[#5D4037]">森林分類員</h2>
+              <button onClick={() => setIsSettingOpen(false)} className="p-2 hover:bg-[#F5F5DC] rounded-full transition-colors"><X size={26} /></button>
             </div>
-            <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-              <div className="bg-purple-50 p-6 rounded-[2rem] space-y-4">
-                <div className="flex gap-2">
-                  <div className={`p-3 rounded-2xl text-white ${newCatData.color} shadow-lg`}>{renderIcon(newCatData.icon, 24)}</div>
-                  <input type="text" placeholder="新分類名稱..." value={newCatData.label} onChange={e => setNewCatData({...newCatData, label: e.target.value})} className="flex-1 bg-white border-2 border-purple-100 rounded-2xl px-4 font-bold focus:outline-none" />
+            <div className="space-y-8 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="bg-[#FEFAE0] p-8 rounded-[3rem] space-y-6 border border-[#FAEDCD]">
+                <div className="flex gap-4">
+                  <div className={`p-4 rounded-2xl text-white ${newCatData.color} shadow-lg`}>{renderIcon(newCatData.icon, 28)}</div>
+                  <input type="text" placeholder="新標籤名稱..." value={newCatData.label} onChange={e => setNewCatData({...newCatData, label: e.target.value})} className="flex-1 bg-white border-2 border-[#FAEDCD] rounded-[1.5rem] px-5 font-bold focus:outline-none focus:border-[#D4A373]" />
                 </div>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-6 gap-3">
                   {Object.keys(ICON_OPTIONS).map(icon => (
-                    <button key={icon} onClick={() => setNewCatData({...newCatData, icon: icon})} className={`p-2 rounded-xl transition-all ${newCatData.icon === icon ? 'bg-purple-500 text-white shadow-md' : 'bg-white text-purple-200'}`}>{renderIcon(icon, 18)}</button>
+                    <button key={icon} onClick={() => setNewCatData({...newCatData, icon: icon})} className={`p-2 rounded-xl transition-all ${newCatData.icon === icon ? 'bg-[#4A6741] text-white shadow-md' : 'bg-white text-[#D1C4B0]'}`}>{renderIcon(icon, 20)}</button>
                   ))}
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-3">
                   {COLOR_OPTIONS.map(color => (
-                    <button key={color} onClick={() => setNewCatData({...newCatData, color: color})} className={`h-8 rounded-xl transition-all ${color} ${newCatData.color === color ? 'ring-4 ring-purple-200 ring-offset-2' : ''}`}></button>
+                    <button key={color} onClick={() => setNewCatData({...newCatData, color: color})} className={`h-10 rounded-xl transition-all ${color} ${newCatData.color === color ? 'ring-4 ring-[#E9EDC9] ring-offset-2' : 'border border-black/5'}`}></button>
                   ))}
                 </div>
-                <button onClick={handleAddCategory} className="w-full py-3 bg-purple-500 text-white rounded-2xl font-black hover:bg-purple-600 transition-all active:scale-95">召喚分類！</button>
+                <button onClick={handleAddCategory} className="w-full py-4 bg-[#4A6741] text-white rounded-[2rem] font-bold text-lg hover:bg-[#3E5638] transition-all active:scale-95 shadow-lg shadow-[#4A6741]/20">栽培新分類</button>
               </div>
             </div>
           </div>
@@ -443,15 +419,9 @@ const App = () => {
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #FCE7F3; border-radius: 10px; }
-        @keyframes shake {
-            0% { transform: rotate(0deg); }
-            25% { transform: rotate(1deg); }
-            75% { transform: rotate(-1deg); }
-            100% { transform: rotate(0deg); }
-        }
-        .animate-shake { animation: shake 0.3s infinite; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E8DCC4; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       `}} />
     </div>
   );
