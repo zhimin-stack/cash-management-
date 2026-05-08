@@ -1,9 +1,32 @@
+```html
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- ========================================== -->
+    <!-- 社群分享縮圖 (Open Graph & Twitter Cards)  -->
+    <!-- ========================================== -->
     <title>森林記帳小筆記 - 森林裡的每一分收穫與落葉</title>
+    <meta name="description" content="充滿吉卜力繪本風格的專屬記帳本，紀錄你每一天的生活足跡。">
+    
+    <!-- Facebook / Line / 網頁分享 -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://您的github帳號.github.io/專案名稱/">
+    <meta property="og:title" content="森林記帳小筆記 - 專屬森林帳本">
+    <meta property="og:description" content="充滿吉卜力繪本風格的專屬記帳本，紀錄你每一天的生活足跡。">
+    <!-- ⚠️ 請將您的縮圖命名為 og-image.png 並與 index.html 放在同一個資料夾 -->
+    <meta property="og:image" content="./og-image.png">
+
+    <!-- Twitter / X -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://您的github帳號.github.io/專案名稱/">
+    <meta property="twitter:title" content="森林記帳小筆記 - 專屬森林帳本">
+    <meta property="twitter:description" content="充滿吉卜力繪本風格的專屬記帳本，紀錄你每一天的生活足跡。">
+    <meta property="twitter:image" content="./og-image.png">
+    <!-- ========================================== -->
+
     <!-- 引入外部資源 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -81,7 +104,6 @@
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #E8DCC4; border-radius: 10px; }
         
-        /* 避免 iOS 輸入框縮放 */
         input { font-size: 16px !important; }
     </style>
 </head>
@@ -91,7 +113,7 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
 
-        // 圖標組件 (處理 CDN 版本 Lucide)
+        // 圖標組件
         const Icon = ({ name, size = 20, className = "" }) => {
             const ref = useRef(null);
             useEffect(() => {
@@ -146,7 +168,10 @@
             });
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isSettingOpen, setIsSettingOpen] = useState(false);
+            
+            // 日曆選擇日期
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+            
             const [formData, setFormData] = useState({
                 type: 'expense', amount: '', category: 'food', note: '', date: new Date().toISOString().split('T')[0]
             });
@@ -156,6 +181,14 @@
                 localStorage.setItem('forest_name', forestName);
                 localStorage.setItem('forest_budget', budget);
             }, [transactions, forestName, budget]);
+
+            // 計算當月天數 (用於日曆)
+            const getDaysInMonth = (dateStr) => {
+                const [year, month] = dateStr.split('-');
+                return new Date(year, month, 0).getDate();
+            };
+            const daysInSelectedMonth = getDaysInMonth(selectedDate);
+            const selectedYearMonth = selectedDate.substring(0, 7); // "YYYY-MM"
 
             const stats = useMemo(() => {
                 const now = new Date();
@@ -217,6 +250,7 @@
                     </header>
 
                     <main className="max-w-2xl mx-auto px-6 relative z-10">
+                        {/* ===================== 首頁: 森林錢包 ===================== */}
                         {activeTab === 'wallet' && (
                             <div className="animate-pop space-y-8 pt-4">
                                 <div className="ghibli-card forest-gradient p-10 text-white overflow-hidden shadow-2xl">
@@ -225,11 +259,11 @@
                                     <h2 className="text-4xl font-black mb-10 tracking-tight">$ {stats.balance.toLocaleString()}</h2>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="bg-white/10 backdrop-blur-md rounded-[1.8rem] p-4 border border-white/20">
-                                            <p className="text-[10px] font-bold text-emerald-100 uppercase mb-1">本月收穫</p>
+                                            <p className="text-[10px] font-bold text-emerald-100 uppercase mb-1">本月收穫 (收入)</p>
                                             <p className="text-xl font-bold">+ {stats.income.toLocaleString()}</p>
                                         </div>
                                         <div className="bg-white/10 backdrop-blur-md rounded-[1.8rem] p-4 border border-white/20">
-                                            <p className="text-[10px] font-bold text-orange-100 uppercase mb-1">本月落葉</p>
+                                            <p className="text-[10px] font-bold text-orange-100 uppercase mb-1">本月落葉 (支出)</p>
                                             <p className="text-xl font-bold">- {stats.expense.toLocaleString()}</p>
                                         </div>
                                     </div>
@@ -265,16 +299,17 @@
                                                 </div>
                                             );
                                         })}
-                                        {transactions.length === 0 && <div className="text-center py-24 opacity-50 italic">森林安靜地等待著故事...</div>}
+                                        {transactions.length === 0 && <div className="text-center py-24 opacity-50 italic font-bold">森林安靜地等待著故事...</div>}
                                     </div>
                                 </section>
                             </div>
                         )}
 
+                        {/* ===================== 分析: 分類比例 ===================== */}
                         {activeTab === 'stats' && (
                             <div className="animate-pop space-y-6 pt-4">
                                 <div className="ghibli-card p-8">
-                                    <h3 className="text-xl font-bold mb-8 flex items-center gap-2.5 text-[#4A6741]"><Icon name="PieChart" size={24} /> 森林分析</h3>
+                                    <h3 className="text-xl font-bold mb-8 flex items-center gap-2.5 text-[#4A6741]"><Icon name="PieChart" size={24} /> 森林分析 (本月)</h3>
                                     <div className="space-y-6">
                                         {stats.catStats.map(([cat, amount]) => {
                                             const info = INITIAL_CATEGORIES[cat] || { label: '其他', color: 'bg-gray-300', icon: 'Leaf' };
@@ -291,20 +326,85 @@
                                                 </div>
                                             );
                                         })}
+                                        {stats.catStats.length === 0 && <p className="text-center py-20 opacity-50 font-bold italic">目前森林裡還沒有落葉 (支出)...</p>}
                                     </div>
                                 </div>
                             </div>
                         )}
 
+                        {/* ===================== 日曆: 時光森林 (已修復完整功能) ===================== */}
                         {activeTab === 'calendar' && (
-                            <div className="animate-pop space-y-6 pt-4">
-                                <div className="ghibli-card p-8 text-center">
-                                    <h3 className="text-xl font-bold mb-4 text-[#5D4037] flex items-center justify-center gap-2"><Icon name="Calendar" className="text-[#87CEEB]" /> 時光森林</h3>
-                                    <div className="grid grid-cols-7 gap-2">
-                                        {Array.from({ length: 30 }, (_, i) => i + 1).map(day => (
-                                            <div key={day} className="aspect-square flex items-center justify-center rounded-xl bg-white/50 text-xs font-bold text-[#A69076]">{day}</div>
-                                        ))}
+                            <div className="animate-pop space-y-6 pt-4 pb-12">
+                                <div className="ghibli-card p-8 text-center relative overflow-hidden">
+                                    <div className="absolute top-2 left-2 opacity-20"><Icon name="Cloud" size={60} /></div>
+                                    <h3 className="text-xl font-bold mb-6 text-[#5D4037] flex items-center justify-center gap-2">
+                                        <Icon name="CalendarDays" className="text-[#87CEEB]" /> 時光森林
+                                    </h3>
+                                    <div className="text-xs font-black bg-[#E9EDC9] px-4 py-2 rounded-full border-2 border-[#CCD5AE] text-[#4A6741] inline-block mb-6">
+                                        {selectedDate.substring(0, 4)}年 {selectedDate.substring(5, 7)}月
                                     </div>
+                                    <div className="grid grid-cols-7 gap-2">
+                                        {['日','一','二','三','四','五','六'].map(d => <div key={d} className="text-center text-[10px] font-black text-[#D1C4B0] pb-2">{d}</div>)}
+                                        {Array.from({ length: daysInSelectedMonth }, (_, i) => {
+                                            const day = i + 1;
+                                            const dStr = `${selectedYearMonth}-${String(day).padStart(2, '0')}`;
+                                            const dayLogs = transactions.filter(t => t.date === dStr);
+                                            const isSelected = selectedDate === dStr;
+                                            
+                                            const hasExpense = dayLogs.some(t => t.type === 'expense');
+                                            const hasIncome = dayLogs.some(t => t.type === 'income');
+
+                                            return (
+                                                <button 
+                                                    key={day} 
+                                                    onClick={() => setSelectedDate(dStr)}
+                                                    className={`aspect-square flex flex-col items-center justify-center rounded-2xl transition-all border-2 relative ${isSelected ? 'border-[#4A6741] bg-[#FEFAE0] scale-110 shadow-md z-10' : 'border-transparent hover:bg-white/50'}`}
+                                                >
+                                                    <span className={`text-[13px] font-black ${dayLogs.length > 0 ? 'text-[#BC6C25]' : 'text-[#A69076]'}`}>{day}</span>
+                                                    <div className="flex gap-0.5 mt-1">
+                                                        {hasExpense && <div className="w-1.5 h-1.5 bg-orange-400 rounded-full"></div>}
+                                                        {hasIncome && <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* 日曆選中日期的詳細紀錄 */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between px-3">
+                                        <div className="flex items-center gap-2 text-[#8B7355] font-black text-sm">
+                                            <Icon name="MapPin" size={16} /> {selectedDate} 的足跡
+                                        </div>
+                                        <div className="text-[10px] font-bold text-[#D1C4B0]">總共 {transactions.filter(t => t.date === selectedDate).length} 筆</div>
+                                    </div>
+                                    
+                                    {transactions.filter(t => t.date === selectedDate).map(t => {
+                                        const info = INITIAL_CATEGORIES[t.category] || { label: '其他', color: 'bg-gray-400', icon: 'Leaf' };
+                                        return (
+                                            <div key={t.id} className="bg-white/80 border-2 border-[#E8DCC4] p-5 rounded-[2rem] flex justify-between items-center shadow-sm group">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`${info.color} p-3 rounded-xl text-white shadow-sm`}><Icon name={info.icon} size={20} /></div>
+                                                    <span className="font-bold text-[#5D4037]">{t.note || info.label}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`font-black text-lg ${t.type === 'income' ? 'text-emerald-600' : 'text-orange-700'}`}>
+                                                        {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
+                                                    </span>
+                                                    <button onClick={() => setTransactions(transactions.filter(x => x.id !== t.id))} className="text-red-200 hover:text-red-500 transition-all">
+                                                        <Icon name="Trash2" size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                    {transactions.filter(t => t.date === selectedDate).length === 0 && (
+                                        <div className="ghibli-card p-8 border-dashed bg-transparent text-center shadow-none">
+                                            <Icon name="Wind" size={32} className="text-[#D1C4B0] mb-2 mx-auto" />
+                                            <p className="text-xs italic text-[#D1C4B0] font-bold">這一天，森林裡只有寧靜...</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -312,13 +412,13 @@
 
                     <nav className="fixed bottom-10 left-0 right-0 px-6 z-50">
                         <div className="max-w-xs mx-auto bg-white/95 backdrop-blur-xl border-2 border-[#E8DCC4] rounded-[3rem] p-2 flex justify-between shadow-2xl ring-12 ring-[#F9F6F0]/90">
-                            <button onClick={() => setActiveTab('wallet')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] ${activeTab === 'wallet' ? 'bg-[#4A6741] text-white' : 'text-[#D1C4B0]'}`}>
+                            <button onClick={() => setActiveTab('wallet')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] transition-all ${activeTab === 'wallet' ? 'bg-[#4A6741] text-white' : 'text-[#D1C4B0]'}`}>
                                 <Icon name="Wallet" /><span className="text-[10px] font-black mt-1">首頁</span>
                             </button>
-                            <button onClick={() => setActiveTab('stats')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] ${activeTab === 'stats' ? 'bg-[#4A6741] text-white' : 'text-[#D1C4B0]'}`}>
+                            <button onClick={() => setActiveTab('stats')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] transition-all ${activeTab === 'stats' ? 'bg-[#4A6741] text-white' : 'text-[#D1C4B0]'}`}>
                                 <Icon name="PieChart" /><span className="text-[10px] font-black mt-1">分析</span>
                             </button>
-                            <button onClick={() => setActiveTab('calendar')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] ${activeTab === 'calendar' ? 'bg-[#4A6741] text-white' : 'text-[#D1C4B0]'}`}>
+                            <button onClick={() => setActiveTab('calendar')} className={`flex-1 flex flex-col items-center py-4 rounded-[2.5rem] transition-all ${activeTab === 'calendar' ? 'bg-[#4A6741] text-white' : 'text-[#D1C4B0]'}`}>
                                 <Icon name="Calendar" /><span className="text-[10px] font-black mt-1">日曆</span>
                             </button>
                         </div>
@@ -344,17 +444,17 @@
                                     </div>
                                     <div className="grid grid-cols-3 gap-3">
                                         {Object.entries(INITIAL_CATEGORIES).filter(([_, info]) => formData.type === 'income' ? info.isIncome : !info.isIncome).map(([key, info]) => (
-                                            <button key={key} type="button" onClick={() => setFormData({...formData, category: key})} className={`flex flex-col items-center gap-2 p-4 rounded-[2rem] border-4 transition-all ${formData.category === key ? 'border-[#4A6741] bg-[#E9EDC9]' : 'border-transparent bg-white'}`}>
+                                            <button key={key} type="button" onClick={() => setFormData({...formData, category: key})} className={`flex flex-col items-center gap-2 p-4 rounded-[2rem] border-4 transition-all btn-press ${formData.category === key ? 'border-[#4A6741] bg-[#E9EDC9]' : 'border-transparent bg-white shadow-sm'}`}>
                                                 <div className={`${info.color} p-3 rounded-xl text-white shadow-sm`}><Icon name={info.icon} size={24} /></div>
-                                                <span className="text-[13px] font-black leading-tight text-center w-full">{info.label}</span>
+                                                <span className="text-[13px] font-black leading-tight text-center w-full break-words whitespace-normal">{info.label}</span>
                                             </button>
                                         ))}
                                     </div>
                                     <div className="grid grid-cols-1 gap-4">
-                                        <div className="bg-white border-2 border-[#F5F5DC] rounded-3xl p-5 flex items-center gap-4"><Icon name="Calendar" size={20} /><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="flex-1 font-bold text-lg focus:outline-none" /></div>
-                                        <div className="bg-white border-2 border-[#F5F5DC] rounded-3xl p-5 flex items-center gap-4"><Icon name="Pen" size={20} /><input type="text" placeholder="備註..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="flex-1 font-bold text-lg focus:outline-none" /></div>
+                                        <div className="bg-white border-2 border-[#F5F5DC] rounded-3xl p-5 flex items-center gap-4"><Icon name="Calendar" size={20} /><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="flex-1 font-bold text-lg focus:outline-none bg-transparent" /></div>
+                                        <div className="bg-white border-2 border-[#F5F5DC] rounded-3xl p-5 flex items-center gap-4"><Icon name="Pen" size={20} /><input type="text" placeholder="備註..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="flex-1 font-bold text-lg focus:outline-none bg-transparent" /></div>
                                     </div>
-                                    <button type="submit" className={`w-full py-6 rounded-[2.5rem] font-black text-2xl text-white shadow-xl ${formData.type === 'income' ? 'bg-[#4A6741]' : 'bg-[#BC6C25]'}`}>保存森林回憶</button>
+                                    <button type="submit" className={`w-full py-6 rounded-[2.5rem] font-black text-2xl text-white shadow-xl btn-press ${formData.type === 'income' ? 'bg-[#4A6741]' : 'bg-[#BC6C25]'}`}>保存森林回憶</button>
                                 </form>
                             </div>
                         </div>
@@ -369,8 +469,8 @@
                                 <div className="space-y-6">
                                     <div className="space-y-2"><label className="text-xs font-black text-[#A69076]">森林名稱</label><input type="text" value={forestName} onChange={e => setForestName(e.target.value)} className="w-full bg-white border-4 border-[#F5F5DC] rounded-[1.8rem] p-5 font-black focus:outline-none focus:border-[#4A6741]" /></div>
                                     <div className="space-y-2"><label className="text-xs font-black text-[#A69076]">本月預算</label><input type="number" value={budget} onChange={e => setBudget(Number(e.target.value))} className="w-full bg-white border-4 border-[#F5F5DC] rounded-[1.8rem] p-5 font-black focus:outline-none focus:border-[#4A6741]" /></div>
-                                    <button onClick={exportCSV} className="w-full py-4 bg-white border-2 border-emerald-100 text-[#4A6741] rounded-[1.8rem] font-black flex items-center justify-center gap-2"><Icon name="FileSpreadsheet" size={18} /> 匯出帳本 (CSV)</button>
-                                    <button onClick={() => setIsSettingOpen(false)} className="w-full py-5 bg-[#4A6741] text-white rounded-[2.5rem] font-black text-lg shadow-xl">保存設定</button>
+                                    <button onClick={exportCSV} className="w-full py-4 bg-white border-2 border-emerald-100 text-[#4A6741] rounded-[1.8rem] font-black flex items-center justify-center gap-2 btn-press"><Icon name="FileSpreadsheet" size={18} /> 匯出帳本 (CSV)</button>
+                                    <button onClick={() => setIsSettingOpen(false)} className="w-full py-5 bg-[#4A6741] text-white rounded-[2.5rem] font-black text-lg shadow-xl btn-press">保存設定</button>
                                 </div>
                             </div>
                         </div>
@@ -384,3 +484,6 @@
     </script>
 </body>
 </html>
+
+
+```
